@@ -1,0 +1,187 @@
+:root {
+    --bg: #f3efe5;
+    --bg-accent: #e8dcc0;
+    --surface: #fff8e6;
+    --surface-2: #fffef8;
+    --text: #1e2d2f;
+    --muted: #516267;
+    --primary: #0e766e;
+    --primary-strong: #0b5f58;
+    --danger: #b9383f;
+    --ok: #237b4b;
+    --ring: rgba(14, 118, 110, 0.25);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text);
+    background:
+        radial-gradient(circle at 15% 10%, rgba(255, 248, 230, 0.95) 0, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(193, 232, 228, 0.85) 0, transparent 42%),
+        linear-gradient(160deg, var(--bg) 0%, var(--bg-accent) 100%);
+}
+
+.app-shell {
+    width: min(980px, 92vw);
+    margin: 2rem auto;
+    padding: 1.25rem;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: 0 14px 30px rgba(16, 39, 44, 0.14);
+}
+
+.hero {
+    margin-bottom: 1.2rem;
+}
+
+.eyebrow {
+    margin: 0;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+h1 {
+    margin: 0.35rem 0;
+}
+
+.subtitle {
+    margin: 0;
+    color: var(--muted);
+}
+
+.widget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.8rem;
+}
+
+.widget-card {
+    border: 1px solid rgba(14, 118, 110, 0.25);
+    border-radius: 12px;
+    min-height: 90px;
+    padding: 1rem;
+    text-align: left;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--surface-2);
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.widget-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(16, 39, 44, 0.12);
+}
+
+.widget-panel {
+    margin-top: 1rem;
+}
+
+.panel-topbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.7rem;
+}
+
+.panel-content {
+    padding: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+
+.widget-title {
+    margin-top: 0;
+}
+
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.55rem 0;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(30, 45, 47, 0.2);
+    font: inherit;
+    color: var(--text);
+    background: #ffffff;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+    outline: 3px solid var(--ring);
+    outline-offset: 1px;
+}
+
+.btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 0.62rem 0.9rem;
+    white-space: nowrap;
+    background: var(--primary);
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn:hover {
+    background: var(--primary-strong);
+}
+
+.btn-secondary {
+    background: #5f6a6d;
+}
+
+.btn-danger {
+    background: var(--danger);
+}
+
+.result-box {
+    margin-top: 0.8rem;
+    padding: 0.75rem;
+    border-radius: 10px;
+    background: #f5f9f9;
+    border: 1px solid rgba(30, 45, 47, 0.1);
+}
+
+.success {
+    color: var(--ok);
+    margin: 0;
+}
+
+.error {
+    color: var(--danger);
+    margin: 0;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+@media (max-width: 640px) {
+    .app-shell {
+        margin: 1rem auto;
+        padding: 0.9rem;
+    }
+
+    .input-group {
+        flex-direction: column;
+    }
+}
