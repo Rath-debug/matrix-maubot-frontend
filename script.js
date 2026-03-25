@@ -6,6 +6,11 @@ const WIDGET_REGISTRY = {
 let currentScript = null;
 
 function bindSelectorEvents() {
+    const targetEl = document.getElementById('backend-target');
+    if (targetEl && window.BotAPI && window.BotAPI.info) {
+        targetEl.textContent = `Backend API: ${window.BotAPI.info.baseUrl()}`;
+    }
+
     const cards = document.querySelectorAll('[data-widget]');
     cards.forEach((card) => {
         card.addEventListener('click', () => {
