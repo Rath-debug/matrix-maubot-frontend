@@ -45,3 +45,18 @@ If API calls fail, check:
 - Backend service is running
 - `BACKEND_PLUGIN_URL` is correct and ends with `/`
 - Backend is reachable from frontend over the selected network mode
+
+## 5) TLS handshake errors (502)
+
+If logs show SSL handshake failures to upstream, such as:
+
+- `SSL_do_handshake() failed`
+
+Then verify:
+
+- For private networking, use HTTP private domain URL:
+  - `http://${{matrix-maubot.RAILWAY_PRIVATE_DOMAIN}}/_matrix/maubot/plugin/`
+- For public networking, use your backend HTTPS domain URL:
+  - `https://your-backend.up.railway.app/_matrix/maubot/plugin/`
+
+This frontend nginx config now enables upstream SNI and sends the upstream host header, which is required by many HTTPS endpoints.
