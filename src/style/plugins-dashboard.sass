@@ -1,0 +1,228 @@
+/* Unified Plugin Dashboard Styles */
+
+.plugins-dashboard {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+        font-size: 32px;
+    }
+
+    .subtitle {
+        color: #7f8c8d;
+        margin-bottom: 30px;
+        font-size: 16px;
+    }
+}
+
+.widgets-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.widget {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .widget-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+
+        &.echo-widget {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        &.reminder-widget {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .description {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    }
+
+    .widget-content {
+        padding: 20px;
+        min-height: 150px;
+
+        .instances-list {
+            h3 {
+                margin: 0 0 15px 0;
+                font-size: 16px;
+                color: #2c3e50;
+            }
+
+            .instance-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                margin-bottom: 10px;
+                background: #f8f9fa;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+
+                &:hover {
+                    background: #f0f1f3;
+                }
+
+                .instance-info {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+
+                    .instance-name {
+                        font-weight: 500;
+                        color: #2c3e50;
+                        font-family: monospace;
+                        font-size: 13px;
+                    }
+
+                    .status {
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                        white-space: nowrap;
+
+                        &.active {
+                            background: #d4edda;
+                            color: #155724;
+                        }
+
+                        &.inactive {
+                            background: #f8d7da;
+                            color: #721c24;
+                        }
+                    }
+                }
+
+                .action-button {
+                    padding: 6px 12px;
+                    margin-left: 10px;
+                    background: #667eea;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    transition: all 0.2s ease;
+
+                    &:hover {
+                        background: #5568d3;
+                        transform: translateY(-1px);
+                    }
+
+                    &:active {
+                        transform: translateY(0);
+                    }
+                }
+            }
+        }
+
+        .no-instances {
+            color: #7f8c8d;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .error-message,
+        .success-message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    }
+
+    .widget-footer {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-top: 1px solid #e0e0e0;
+        text-align: right;
+
+        .primary {
+            background: #667eea;
+            color: white;
+            font-weight: 500;
+
+            &:hover {
+                background: #5568d3;
+            }
+        }
+    }
+}
+
+.no-plugins {
+    padding: 40px 20px;
+    text-align: center;
+    background: white;
+    border: 2px dashed #e0e0e0;
+    border-radius: 8px;
+    color: #7f8c8d;
+
+    p {
+        margin: 0;
+        font-size: 16px;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .widgets-container {
+        grid-template-columns: 1fr;
+    }
+
+    .widget {
+        .widget-content {
+            .instance-item {
+                flex-direction: column;
+                align-items: flex-start;
+
+                .action-button {
+                    margin-left: 0;
+                    margin-top: 10px;
+                    width: 100%;
+                }
+            }
+        }
+    }
+}

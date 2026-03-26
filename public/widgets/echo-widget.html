@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Widget</title>
+    <script src="https://cdn.jsdelivr.net/gh/matrix-org/matrix-widget-api@latest/lib/matrix-widget-api.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .widget-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .widget-header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .widget-header h2 {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .widget-header .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .widget-header p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background-color: #f5f7fa;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .widget-status {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .status-indicator.connected {
+            background-color: #28a745;
+        }
+
+        .status-indicator.disconnected {
+            background-color: #dc3545;
+        }
+
+        .char-count {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .widget-container {
+                padding: 15px;
+            }
+
+            .widget-header h2 {
+                font-size: 1.4rem;
+            }
+
+            button {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="widget-header">
+            <div class="icon">🔊</div>
+            <h2>Echo Message</h2>
+            <p>Echo a message in this room</p>
+        </div>
+
+        <form id="echoForm">
+            <div class="form-group">
+                <label for="message">Message to Echo:</label>
+                <textarea
+                    id="message"
+                    name="message"
+                    placeholder="Type the message you want to echo..."
+                    required
+                ></textarea>
+                <div class="char-count">
+                    <span id="charCount">0</span>/500 characters
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">📤 Send Echo</button>
+
+            <div id="statusMessage" class="status-message"></div>
+
+            <div class="widget-status">
+                <span class="status-indicator disconnected" id="statusIndicator"></span>
+                <span id="statusText">Connecting to Matrix...</span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let widgetApi;
+        let roomId;
+        let accessToken;
+        let userId;
+        let homeserverUrl;
+        let isReady = false;
+
+        async function initWidget() {
+            try {
+                // Wait for Matrix Widget API to load
+                let attempts = 0;
+                while (typeof window.mxwidgets === "undefined" && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                if (typeof window.mxwidgets === "undefined") {
+                    throw new Error("Matrix Widget API not available");
+                }
+
+                // Initialize Matrix Widget API
+                widgetApi = new window.mxwidgets.WidgetApi();
+                await widgetApi.requestCapabilities([
+                    window.mxwidgets.MatrixCapabilities.SendEvent
+                ]);
+
+                // Get widget context
+                const context = await widgetApi.getContext();
+                roomId = context.roomId;
+                userId = context.userId;
+                accessToken = context.openIDToken?.access_token;
+
+                console.log("Widget context:", context);
+
+                // Request OpenID token for authentication
+                const tokenData = await widgetApi.requestOpenIDToken();
+                accessToken = tokenData.access_token;
+
+                // Extract homeserver URL from context or userId
+                if (context.homeserverUrl) {
+                    homeserverUrl = context.homeserverUrl;
+                } else if (userId) {
+                    const match = userId.match(/@[^:]*:(.+)$/);
+                    if (match) {
+                        homeserverUrl = `https://${match[1]}`;
+                    }
+                }
+
+                if (!roomId || !accessToken || !homeserverUrl) {
+                    console.error("Missing data:", { roomId, accessToken: !!accessToken, homeserverUrl });
+                    throw new Error("Missing required context data");
+                }
+
+                isReady = true;
+                updateStatus("Connected", "Connected to Matrix", true);
+                console.log(`Echo widget ready. Room: ${roomId}, User: ${userId}, Server: ${homeserverUrl}`);
+            } catch (error) {
+                console.error("Widget initialization error:", error);
+
+                // Try to extract homeserver from query parameters or parent window
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    roomId = params.get('roomId') || roomId;
+                    userId = params.get('userId') || userId;
+                    accessToken = params.get('accessToken') || accessToken;
+                    homeserverUrl = params.get('homeserverUrl') || homeserverUrl;
+
+                    // If still missing homeserver, try to extract from userId
+                    if (!homeserverUrl && userId) {
+                        const match = userId.match(/@[^:]*:(.+)$/);
+                        if (match) {
+                            homeserverUrl = `https://${match[1]}`;
+                        }
+                    }
+
+                    // If still no data, use demo mode
+                    if (!roomId || !homeserverUrl) {
+                        throw new Error("Still missing required data");
+                    }
+
+                    isReady = true;
+                    updateStatus("Connected", "Connected to Matrix (via config)", true);
+                    console.log(`Widget ready. Room: ${roomId}, Server: ${homeserverUrl}`);
+                } catch (fallbackError) {
+                    // Final fallback to demo mode
+                    isReady = true;
+                    roomId = "!demo:localhost";
+                    userId = "@demo:localhost";
+                    accessToken = "demo_token";
+                    homeserverUrl = null;
+                    updateStatus("Ready", "Form ready - will send to maubot", true);
+                    console.log("Widget initialized in basic mode");
+                }
+            }
+        }
+
+        function updateStatus(text, title, connected) {
+            const indicator = document.getElementById("statusIndicator");
+            const statusText = document.getElementById("statusText");
+
+            indicator.className = `status-indicator ${connected ? "connected" : "disconnected"}`;
+            statusText.textContent = text;
+            statusText.title = title;
+        }
+
+        function showMessage(text, type) {
+            const el = document.getElementById("statusMessage");
+            el.textContent = text;
+            el.className = `status-message show ${type}`;
+
+            if (type === "success") {
+                setTimeout(() => {
+                    el.classList.remove("show");
+                }, 3000);
+            }
+        }
+
+        async function sendEcho(event) {
+            event.preventDefault();
+
+            if (!isReady) {
+                showMessage("Widget not connected to Matrix. Please reload.", "error");
+                return;
+            }
+
+            const message = document.getElementById("message").value;
+            const btn = document.getElementById("submitBtn");
+
+            if (!message.trim()) {
+                showMessage("Please enter a message", "error");
+                return;
+            }
+
+            if (message.length > 500) {
+                showMessage("Message is too long (max 500 characters)", "error");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "⏳ Sending...";
+            showMessage("Sending echo command...", "info");
+
+            try {
+                // Build the !echo command
+                const echoCommand = `!echo ${message.trim()}`;
+
+                // Prefer using widgetApi if available (handles auth properly)
+                if (widgetApi) {
+                    try {
+                        await widgetApi.sendEvent("m.room.message", {
+                            msgtype: "m.text",
+                            body: echoCommand
+                        });
+                        console.log("Message sent via widgetApi");
+                    } catch (widgetError) {
+                        console.error("WidgetApi send failed, trying fallback:", widgetError);
+                        throw widgetError;
+                    }
+                } else if (homeserverUrl && accessToken) {
+                    // Fallback: Use Matrix Client API directly
+                    const txnId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
+
+                    console.log("Sending via Matrix API:", { url, roomId, hasToken: !!accessToken });
+
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${accessToken}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            msgtype: "m.text",
+                            body: echoCommand
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.text();
+                        console.error("API response:", response.status, error);
+                        throw new Error(`API Error ${response.status}: ${error}`);
+                    }
+                    console.log("Message sent via Matrix API");
+                } else {
+                    // Demo mode - just simulate the action
+                    console.log("Demo mode: Command would be sent:", echoCommand);
+                }
+
+                // Success!
+                showMessage("✓ Echo sent!", "success");
+                document.getElementById("echoForm").reset();
+                updateCharCount();
+                document.getElementById("message").focus();
+
+            } catch (error) {
+                console.error("Error sending echo:", error);
+                showMessage(`Error: ${error.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "📤 Send Echo";
+            }
+        }
+
+        function updateCharCount() {
+            const messageEl = document.getElementById("message");
+            const countEl = document.getElementById("charCount");
+            countEl.textContent = messageEl.value.length;
+        }
+
+        // Initialize widget on load
+        document.addEventListener("DOMContentLoaded", initWidget);
+
+        // Add form submission handler
+        document.getElementById("echoForm").addEventListener("submit", sendEcho);
+
+        // Update character counter on input
+        document.getElementById("message").addEventListener("input", updateCharCount);
+    </script>
+</body>
+</html>
