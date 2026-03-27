@@ -310,13 +310,39 @@ async function sendReminderViaBackend(duration, unit, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
+    if (!roomId || !homeserverUrl) {
+        throw new Error("Not connected to Matrix");
+    }
+
+    // Use MAS token or OpenID token
     let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
     if (!token) {
         throw new Error("No access token available");
     }
+
+    // Send the message via Matrix API
+    const txnId = `${Date.now()}_${Math.random()}`;
+    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            msgtype: "m.text",
+            body: reminderCommand
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Matrix API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("✓ Reminder sent:", result.event_id);
 }
-
-
 
 /**
  * Initialize on DOM ready
