@@ -314,13 +314,11 @@ async function sendReminderViaMatrix(duration, unit, message) {
         throw new Error("Not connected to Matrix");
     }
 
-    // Use MAS token or OpenID token
     let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
     if (!token) {
         throw new Error("No access token available");
     }
 
-    // Send the message via Matrix API
     const txnId = `${Date.now()}_${Math.random()}`;
     const url = `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
 
