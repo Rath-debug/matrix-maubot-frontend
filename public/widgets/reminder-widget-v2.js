@@ -291,7 +291,7 @@ async function sendReminderViaBackend(duration, unit, message) {
     // Keep existing backend contract: /api/reminder with {message, time}
     const time = `${duration}${unit}`;
     const response = await fetch("/api/reminder", {
-        method: "POST",
+        method: "PUT",
         headers: {
             "Content-Type": "application/json"
         },
