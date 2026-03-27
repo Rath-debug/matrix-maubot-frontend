@@ -7,6 +7,7 @@ let roomId;
 let userId;
 let homeserverUrl;
 let isReady = false;
+let mode = null; // "matrix" or "api"
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
@@ -136,7 +137,16 @@ function showMessage(text, type) {
 async function initWidget() {
     try {
         console.log("🔄 Widget initializing...");
-        updateStatus("Connecting to Matrix...", "Connecting", false);
+        updateStatus("Connecting...", "Connecting", false);
+
+        // If not embedded, Element handshake will never arrive.
+        if (window.parent === window) {
+            mode = "api";
+            isReady = true;
+            updateStatus("API Mode", "Standalone mode via backend API", true);
+            console.log("✓ Standalone mode detected. Using backend API.");
+            return;
+        }
 
         // Step 1: Wait for capabilities from Element
         console.log("[Init] Waiting for capabilities from Element...");
@@ -144,9 +154,9 @@ async function initWidget() {
         let widgetId = null;
         const capabilitiesReceived = await new Promise((resolve) => {
             const timeout = setTimeout(() => {
-                console.error("❌ Timeout waiting for capabilities");
+                console.warn("⚠️ Timeout waiting for capabilities, falling back to API mode");
                 resolve(false);
-            }, 5000);
+            }, 3000);
 
             const capListener = (msg) => {
                 if (msg.action === "capabilities") {
@@ -164,8 +174,14 @@ async function initWidget() {
         });
 
         if (!capabilitiesReceived) {
-            throw new Error("Element did not send capabilities");
+            mode = "api";
+            isReady = true;
+            updateStatus("API Mode", "Element not detected, using backend API", true);
+            console.log("✓ Fallback mode enabled. Using backend API.");
+            return;
         }
+
+        mode = "matrix";
 
         // Step 2: Acknowledge capabilities with the SAME requestId and widgetId
         console.log("[Init] Acknowledging capabilities...");
@@ -213,7 +229,7 @@ async function initWidget() {
         }
 
         isReady = true;
-        updateStatus("Connected", "Connected to Matrix", true);
+        updateStatus("Matrix Mode", "Connected to Matrix", true);
         console.log("✓ Widget ready. Room:", roomId, "User:", userId);
 
     } catch (error) {
@@ -229,7 +245,7 @@ async function sendReminder(event) {
     event.preventDefault();
 
     if (!isReady) {
-        showMessage("Widget not connected to Matrix. Please reload.", "error");
+        showMessage("Widget not ready. Please reload.", "error");
         return;
     }
 
@@ -245,60 +261,16 @@ async function sendReminder(event) {
 
     btn.disabled = true;
     btn.textContent = "⏳ Sending...";
-    showMessage("Sending reminder command...", "info");
+    showMessage("Sending reminder...", "info");
 
     try {
-        const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
-
-        if (!roomId || !homeserverUrl) {
-            throw new Error("Not connected to Matrix");
+        if (mode === "api") {
+            await sendReminderViaBackend(duration, unit, message);
+        } else if (mode === "matrix") {
+            await sendReminderViaMatrix(duration, unit, message);
+        } else {
+            throw new Error("Unknown widget mode");
         }
-
-        // Get an auth token
-        let token = openIdToken;
-        if (!token) {
-            console.log("No OpenID token, trying guest registration...");
-            try {
-                const guestResp = await fetch(`${homeserverUrl}/_matrix/client/v3/register?kind=guest`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: "{}"
-                });
-
-                if (guestResp.ok) {
-                    const guestData = await guestResp.json();
-                    token = guestData.access_token;
-                    console.log("✓ Got guest token");
-                } else {
-                    throw new Error(`Guest registration failed: ${guestResp.status}`);
-                }
-            } catch (e) {
-                throw new Error(`Authentication failed: ${e.message}`);
-            }
-        }
-
-        // Send the message via Matrix API
-        const txnId = `${Date.now()}_${Math.random()}`;
-        const url = `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                msgtype: "m.text",
-                body: reminderCommand
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log("✓ Reminder sent:", result.event_id);
         showMessage(`✓ Reminder set for ${duration}${unit}!`, "success");
 
         // Clear form
@@ -314,6 +286,37 @@ async function sendReminder(event) {
         btn.textContent = "📤 Set Reminder";
     }
 }
+
+async function sendReminderViaBackend(duration, unit, message) {
+    // Keep existing backend contract: /api/reminder with {message, time}
+    const time = `${duration}${unit}`;
+    const response = await fetch("/api/reminder", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            message: message.trim(),
+            time
+        })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data.error || `API error: ${response.status}`);
+    }
+}
+
+async function sendReminderViaMatrix(duration, unit, message) {
+    const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
+
+    let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
+    if (!token) {
+        throw new Error("No access token available");
+    }
+}
+
+
 
 /**
  * Initialize on DOM ready
