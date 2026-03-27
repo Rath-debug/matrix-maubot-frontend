@@ -319,8 +319,8 @@ async function sendReminderViaMatrix(duration, unit, message) {
         throw new Error("No access token available");
     }
 
-    const txnId = `${Date.now()}_${Math.random()}`;
-    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
+    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${roomId}/send/m.room.message/${txnId}`;
+
 
     const response = await fetch(url, {
         method: "POST",
