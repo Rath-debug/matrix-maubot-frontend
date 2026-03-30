@@ -288,24 +288,23 @@ async function sendReminder(event) {
 }
 
 async function sendReminderViaBackend(duration, unit, message) {
-    // Keep existing backend contract: /api/reminder with {message, time}
-    const time = `${duration}${unit}`;
     const response = await fetch("/api/reminder", {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        method: "POST",  // likely what your backend expects
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             message: message.trim(),
-            time
+            time: `${duration}${unit}`
         })
     });
 
-    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.error || `API error: ${response.status}`);
     }
+
+    return response.json();  // return the result
 }
+
 
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
