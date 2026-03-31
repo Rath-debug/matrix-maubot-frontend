@@ -132,19 +132,44 @@ function showMessage(text, type) {
 
 function initStandaloneMatrixContext() {
     const params = new URLSearchParams(window.location.search);
-    const tokenFromStorage = localStorage.getItem("matrixAccessToken");
+    const storage = {
+        roomId: localStorage.getItem("matrixRoomId"),
+        userId: localStorage.getItem("matrixUserId"),
+        homeserverUrl: localStorage.getItem("matrixHomeserverUrl"),
+        accessToken: localStorage.getItem("matrixAccessToken")
+    };
 
-    roomId = params.get("roomId") || roomId;
-    userId = params.get("userId") || userId;
-    homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || homeserverUrl;
-    openIdToken = params.get("accessToken") || window.MATRIX_ACCESS_TOKEN || tokenFromStorage || openIdToken;
+    roomId = params.get("roomId") || storage.roomId || roomId;
+    userId = params.get("userId") || storage.userId || userId;
+    homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || storage.homeserverUrl || homeserverUrl;
+    openIdToken = params.get("accessToken") || window.MATRIX_ACCESS_TOKEN || storage.accessToken || openIdToken;
+
+    if (!roomId) {
+        roomId = window.prompt("Enter Matrix Room ID (example: !abc123:matrix.org):", "") || "";
+    }
+    if (!homeserverUrl) {
+        homeserverUrl = window.prompt("Enter Matrix homeserver URL (example: https://matrix.org):", "") || "";
+    }
+    if (!openIdToken) {
+        openIdToken = window.prompt("Enter Matrix access token:", "") || "";
+    }
+    if (!userId) {
+        userId = window.prompt("Optional Matrix user ID (example: @alice:matrix.org):", "") || "";
+    }
 
     if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
         homeserverUrl = `https://${homeserverUrl}`;
     }
 
     if (!roomId || !homeserverUrl || !openIdToken) {
-        throw new Error("Standalone mode needs roomId, homeserver, and accessToken (query params or window.MATRIX_ACCESS_TOKEN)");
+        throw new Error("Standalone mode requires roomId, homeserver, and accessToken");
+    }
+
+    localStorage.setItem("matrixRoomId", roomId);
+    localStorage.setItem("matrixHomeserverUrl", homeserverUrl);
+    localStorage.setItem("matrixAccessToken", openIdToken);
+    if (userId) {
+        localStorage.setItem("matrixUserId", userId);
     }
 
     console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
