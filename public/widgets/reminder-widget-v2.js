@@ -7,7 +7,6 @@ let roomId;
 let userId;
 let homeserverUrl;
 let isReady = false;
-let mode = null; // "matrix" or "api"
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
@@ -139,13 +138,9 @@ async function initWidget() {
         console.log("🔄 Widget initializing...");
         updateStatus("Connecting...", "Connecting", false);
 
-        // If not embedded, Element handshake will never arrive.
+        // This widget requires Element embedding for Matrix context/token.
         if (window.parent === window) {
-            mode = "api";
-            isReady = true;
-            updateStatus("API Mode", "Standalone mode via backend API", true);
-            console.log("✓ Standalone mode detected. Using backend API.");
-            return;
+            throw new Error("Widget must be embedded in Element (Matrix mode only)");
         }
 
         // Step 1: Wait for capabilities from Element
@@ -174,14 +169,8 @@ async function initWidget() {
         });
 
         if (!capabilitiesReceived) {
-            mode = "api";
-            isReady = true;
-            updateStatus("API Mode", "Element not detected, using backend API", true);
-            console.log("✓ Fallback mode enabled. Using backend API.");
-            return;
+            throw new Error("Did not receive capabilities from Element");
         }
-
-        mode = "matrix";
 
         // Step 2: Acknowledge capabilities with the SAME requestId and widgetId
         console.log("[Init] Acknowledging capabilities...");
@@ -264,13 +253,7 @@ async function sendReminder(event) {
     showMessage("Sending reminder...", "info");
 
     try {
-        if (mode === "api") {
-            await sendReminderViaBackend(duration, unit, message);
-        } else if (mode === "matrix") {
-            await sendReminderViaMatrix(duration, unit, message);
-        } else {
-            throw new Error("Unknown widget mode");
-        }
+        await sendReminderViaMatrix(duration, unit, message);
         showMessage(`✓ Reminder set for ${duration}${unit}!`, "success");
 
         // Clear form
@@ -286,25 +269,6 @@ async function sendReminder(event) {
         btn.textContent = "📤 Set Reminder";
     }
 }
-
-async function sendReminderViaBackend(duration, unit, message) {
-    const response = await fetch("/api/reminder", {
-        method: "POST",  // likely what your backend expects
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            message: message.trim(),
-            time: `${duration}${unit}`
-        })
-    });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `API error: ${response.status}`);
-    }
-
-    return response.json();  // return the result
-}
-
 
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
