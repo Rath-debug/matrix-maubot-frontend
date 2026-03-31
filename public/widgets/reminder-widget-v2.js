@@ -130,6 +130,26 @@ function showMessage(text, type) {
     }
 }
 
+function initStandaloneMatrixContext() {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromStorage = localStorage.getItem("matrixAccessToken");
+
+    roomId = params.get("roomId") || roomId;
+    userId = params.get("userId") || userId;
+    homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || homeserverUrl;
+    openIdToken = params.get("accessToken") || window.MATRIX_ACCESS_TOKEN || tokenFromStorage || openIdToken;
+
+    if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
+        homeserverUrl = `https://${homeserverUrl}`;
+    }
+
+    if (!roomId || !homeserverUrl || !openIdToken) {
+        throw new Error("Standalone mode needs roomId, homeserver, and accessToken (query params or window.MATRIX_ACCESS_TOKEN)");
+    }
+
+    console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
+}
+
 /**
  * Initialize widget by handshaking with Element
  */
@@ -138,9 +158,13 @@ async function initWidget() {
         console.log("🔄 Widget initializing...");
         updateStatus("Connecting...", "Connecting", false);
 
-        // This widget requires Element embedding for Matrix context/token.
+        // If opened directly in browser, use explicit standalone Matrix config.
         if (window.parent === window) {
-            throw new Error("Widget must be embedded in Element (Matrix mode only)");
+            initStandaloneMatrixContext();
+            isReady = true;
+            updateStatus("Standalone Matrix", "Using URL/manual Matrix config", true);
+            console.log("✓ Widget ready in standalone Matrix mode");
+            return;
         }
 
         // Step 1: Wait for capabilities from Element
@@ -149,7 +173,7 @@ async function initWidget() {
         let widgetId = null;
         const capabilitiesReceived = await new Promise((resolve) => {
             const timeout = setTimeout(() => {
-                console.warn("⚠️ Timeout waiting for capabilities, falling back to API mode");
+                console.warn("⚠️ Timeout waiting for capabilities");
                 resolve(false);
             }, 3000);
 
