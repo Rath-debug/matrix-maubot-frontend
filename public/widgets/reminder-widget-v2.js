@@ -330,8 +330,10 @@ async function sendReminder(event) {
         startCountdownTimer();
 
         // Clear form (but keep timer running)
-        document.getElementById("reminderForm").reset();
-        document.getElementById("remindDateTime").focus();
+        const reminderForm = document.getElementById("reminderForm");
+        if (reminderForm) reminderForm.reset();
+        const remindDateTime = document.getElementById("remindDateTime");
+        if (remindDateTime) remindDateTime.focus();
 
     } catch (error) {
         console.error("❌ Error:", error.message);
@@ -497,7 +499,10 @@ async function reminderTimer(params) {
  */
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
-    document.getElementById("reminderForm").addEventListener("submit", sendReminder);
+    const reminderForm = document.getElementById("reminderForm");
+    if (reminderForm) {
+        reminderForm.addEventListener("submit", sendReminder);
+    }
     renderReminders();
     startCountdownTimer();
 
