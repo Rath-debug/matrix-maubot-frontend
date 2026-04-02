@@ -336,75 +336,148 @@
         <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
     </div>
 
-    <!-- SCHEDULED REMINDER WIDGET -->
-    <div class="widget-container">
-        <!-- Circular Countdown Timer at the top -->
-        <div id="timerContainer" style="display:flex; justify-content:center; align-items:center; margin: 24px 0;">
-            <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
-                <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
-                <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
-            </svg>
-        </div>
-        <div class="widget-header">
-            <div class="icon">⏰</div>
-            <h2>Create Reminder</h2>
-            <p>Set a reminder in this room</p>
-        </div>
-
-        <form id="reminderForm">
-            <div class="form-group">
-                <label for="remindDateTime">When:</label>
-                <input
-                    type="datetime-local"
-                    id="remindDateTime"
-                    name="remindDateTime"
-                    required
-                    style="width: 100%;"
-                />
+    <div class="main-layout">
+        <!-- Sidebar with Quick Commands -->
+        <aside class="sidebar">
+            <div class="sidebar-header">Quick Commands</div>
+            <div id="commandButtons" class="sidebar-commands">
+                <button type="button" class="cmd-btn" data-cmd="!remind help">Help</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind list">List</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind locales">Locales</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind locale">Locale</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind timezone">Timezone</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind for">For</button>
+                <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
+            </div>
+        </aside>
+        <!-- SCHEDULED REMINDER WIDGET -->
+        <div class="widget-container">
+            <!-- Circular Countdown Timer at the top -->
+            <div id="timerContainer" style="display:flex; justify-content:center; align-items:center; margin: 24px 0;">
+                <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
+                    <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
+                    <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
+                </svg>
+            </div>
+            <div class="widget-header">
+                <div class="icon">⏰</div>
+                <h2>Create Reminder</h2>
+                <p>Set a reminder in this room</p>
             </div>
 
-            <div class="form-group">
-                <label for="message">Reminder Message:</label>
-                <textarea
-                    id="message"
-                    name="message"
-                    placeholder="e.g., Take a break, drink water, or check emails..."
-                    required
-                ></textarea>
-            </div>
-
-            <button type="submit" id="submitBtn">📤 Set Reminder</button>
-
-            <div class="form-group" style="margin-top: 24px;">
-                <label>Quick Commands:</label>
-                <div id="commandButtons" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <button type="button" class="cmd-btn" data-cmd="!remind help">Help</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind list">List</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind locales">Locales</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind locale">Locale</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind timezone">Timezone</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind for">For</button>
-                    <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
+            <form id="reminderForm">
+                <div class="form-group">
+                    <label for="remindDateTime">When:</label>
+                    <input
+                        type="datetime-local"
+                        id="remindDateTime"
+                        name="remindDateTime"
+                        required
+                        style="width: 100%;"
+                    />
                 </div>
-            </div>
+
+                <div class="form-group">
+                    <label for="message">Reminder Message:</label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        placeholder="e.g., Take a break, drink water, or check emails..."
+                        required
+                    ></textarea>
+                </div>
+
+                <button type="submit" id="submitBtn">📤 Set Reminder</button>
+                <div id="statusMessage" class="status-message"></div>
+
+                <!-- Upcoming Reminders List -->
+                <div id="reminderListContainer" style="margin-top: 24px;">
+                    <label style="font-weight:600; color:#333;">Upcoming Reminders</label>
+                    <ul id="reminderList" style="list-style:none; padding:0; margin:10px 0 0 0;"></ul>
+                </div>
 
 
-            <div id="statusMessage" class="status-message"></div>
-
-            <!-- Upcoming Reminders List -->
-            <div id="reminderListContainer" style="margin-top: 24px;">
-                <label style="font-weight:600; color:#333;">Upcoming Reminders</label>
-                <ul id="reminderList" style="list-style:none; padding:0; margin:10px 0 0 0;"></ul>
-            </div>
-
-
-            <div class="widget-status">
-                <span class="status-indicator disconnected" id="statusIndicator"></span>
-                <span id="statusText">Connecting to Matrix...</span>
-            </div>
-        </form>
+                <div class="widget-status">
+                    <span class="status-indicator disconnected" id="statusIndicator"></span>
+                    <span id="statusText">Connecting to Matrix...</span>
+                </div>
+            </form>
+        </div>
     </div>
+        <style>
+        .main-layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+        .sidebar {
+            min-width: 160px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            padding: 18px 12px 18px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            height: fit-content;
+        }
+        .sidebar-header {
+            font-weight: bold;
+            color: #f5576c;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+        .sidebar-commands {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar-commands .cmd-btn {
+            background: #f5f6fa;
+            color: #f5576c;
+            border: 1px solid #f093fb44;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 500;
+            padding: 8px 0;
+            transition: background 0.2s, color 0.2s;
+            cursor: pointer;
+        }
+        .sidebar-commands .cmd-btn:hover {
+            background: #f093fb22;
+            color: #d81b60;
+        }
+        @media (max-width: 900px) {
+            .main-layout {
+                flex-direction: column;
+                gap: 0;
+            }
+            .sidebar {
+                flex-direction: row;
+                min-width: 0;
+                width: 100%;
+                margin-bottom: 18px;
+                justify-content: center;
+                align-items: center;
+                box-shadow: none;
+                border-radius: 8px;
+                padding: 10px 0 10px 0;
+            }
+            .sidebar-header {
+                display: none;
+            }
+            .sidebar-commands {
+                flex-direction: row;
+                gap: 8px;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        </style>
     <script>
     window.MATRIX_ACCESS_TOKEN = "mct_0mE0jCRpa15mGnszRoO9kOkTsuNDqg_0avSrz";
     </script>
