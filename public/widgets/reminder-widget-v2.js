@@ -526,6 +526,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
             const m = parseInt(document.getElementById("timerMinutes").value, 10) || 0;
             const s = parseInt(document.getElementById("timerSeconds").value, 10) || 0;
+            const msgInput = document.getElementById("timerMessage");
+            const userMsg = msgInput ? msgInput.value.trim() : "";
             timerTotal = h * 3600 + m * 60 + s;
             timerLeft = timerTotal;
             if (timerTotal <= 0) {
@@ -541,9 +543,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     timerDisplay.textContent = "00:00:00";
                     clearInterval(timerWidgetInterval);
                     timerRunning = false;
-                    // Send message to Matrix room
+                    // Send motivational message to Matrix room
+                    let botMsg = userMsg || getRandomMotivation();
                     try {
-                        await sendCommandToMatrix(`!remind for 0s Timer finished!`);
+                        await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
                     } catch (err) {
                         // ignore
                     }
@@ -552,6 +555,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }, 1000);
         });
+    }
+
+    // Motivational message pool
+    function getRandomMotivation() {
+        const pool = [
+            "Time's up! You did it! 🎉",
+            "Great job! Take a break ☕",
+            "Well done! Ready for your next challenge?",
+            "Focus session complete! 💪",
+            "Break time! Stretch and smile 😊",
+            "You stayed on track! 👏",
+            "Another step forward! Keep going!"
+        ];
+        return pool[Math.floor(Math.random() * pool.length)];
     }
 
     function formatTimer(sec) {

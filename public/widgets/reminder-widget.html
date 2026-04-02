@@ -223,8 +223,8 @@
     <div class="widget-container" style="margin-bottom: 32px;">
         <div class="widget-header">
             <div class="icon">⏱️</div>
-            <h2>Quick Timer</h2>
-            <p>Set a countdown timer (hours, minutes, seconds)</p>
+            <h2>Motivational Timer</h2>
+            <p>Set a countdown timer</p>
         </div>
         <form id="timerForm">
             <div class="form-group time-input-group">
@@ -241,9 +241,14 @@
                     <input type="number" id="timerSeconds" min="0" max="59" value="0" style="width:100%;" />
                 </div>
             </div>
-            <button type="submit" id="timerStartBtn">▶️ Start Timer</button>
+            <div class="form-group">
+                <label for="timerMessage">Message:</label>
+                <input type="text" id="timerMessage" name="timerMessage" placeholder="e.g., Great job! Take a break ☕" maxlength="120" style="width:100%;" />
+            </div>
+            <button type="submit" id="timerStartBtn">🚀 Start Motivational Timer</button>
             <div id="timerCountdownDisplay" style="text-align:center; font-size:1.5em; margin:16px 0; color:#f5576c; font-family:monospace;">00:00:00</div>
         </form>
+        <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
     </div>
 
     <!-- SCHEDULED REMINDER WIDGET -->
@@ -320,56 +325,7 @@
     </script>
 
     <script src="reminder-widget-v2.js"></script>
-    <script>
-    // TIMER WIDGET LOGIC
-    let timerWidgetInterval = null;
-    document.addEventListener("DOMContentLoaded", function() {
-        const timerForm = document.getElementById("timerForm");
-        const timerDisplay = document.getElementById("timerCountdownDisplay");
-        let timerTotal = 0;
-        let timerLeft = 0;
-        let timerRunning = false;
-
-        timerForm.addEventListener("submit", function(e) {
-            e.preventDefault();
-            const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
-            const m = parseInt(document.getElementById("timerMinutes").value, 10) || 0;
-            const s = parseInt(document.getElementById("timerSeconds").value, 10) || 0;
-            timerTotal = h * 3600 + m * 60 + s;
-            timerLeft = timerTotal;
-            if (timerTotal <= 0) {
-                timerDisplay.textContent = "00:00:00";
-                return;
-            }
-            timerRunning = true;
-            timerDisplay.textContent = formatTimer(timerLeft);
-            if (timerWidgetInterval) clearInterval(timerWidgetInterval);
-            timerWidgetInterval = setInterval(async function() {
-                timerLeft--;
-                if (timerLeft <= 0) {
-                    timerDisplay.textContent = "00:00:00";
-                    clearInterval(timerWidgetInterval);
-                    timerRunning = false;
-                    // Send message to Matrix room
-                    try {
-                        await window.sendCommandToMatrix && window.sendCommandToMatrix(`!remind for 0s Timer finished!`);
-                    } catch (err) {
-                        // ignore
-                    }
-                } else {
-                    timerDisplay.textContent = formatTimer(timerLeft);
-                }
-            }, 1000);
-        });
-
-        function formatTimer(sec) {
-            const h = String(Math.floor(sec / 3600)).padStart(2, '0');
-            const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-            const s = String(sec % 60).padStart(2, '0');
-            return `${h}:${m}:${s}`;
-        }
-    });
-    </script>
+    <!-- Timer logic is now handled in reminder-widget-v2.js -->
     <style>
     /* Modern calendar input style (macOS/Microsoft inspired) */
     input[type="datetime-local"] {
