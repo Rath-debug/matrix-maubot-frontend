@@ -220,6 +220,14 @@
 </head>
 <body>
     <div class="widget-container">
+        <!-- Circular Countdown Timer at the top -->
+        <div id="timerContainer" style="display:flex; justify-content:center; align-items:center; margin: 24px 0;">
+            <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
+                <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
+                <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
+            </svg>
+        </div>
         <div class="widget-header">
             <div class="icon">⏰</div>
             <h2>Create Reminder</h2>
@@ -263,16 +271,15 @@
                 </div>
             </div>
 
+
             <div id="statusMessage" class="status-message"></div>
 
-            <!-- Circular Countdown Timer -->
-            <div id="timerContainer" style="display:none; justify-content:center; align-items:center; margin: 24px 0;">
-                <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
-                    <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
-                    <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
-                </svg>
+            <!-- Upcoming Reminders List -->
+            <div id="reminderListContainer" style="margin-top: 24px;">
+                <label style="font-weight:600; color:#333;">Upcoming Reminders</label>
+                <ul id="reminderList" style="list-style:none; padding:0; margin:10px 0 0 0;"></ul>
             </div>
+
 
             <div class="widget-status">
                 <span class="status-indicator disconnected" id="statusIndicator"></span>

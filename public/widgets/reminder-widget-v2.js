@@ -279,6 +279,9 @@ async function initWidget() {
 /**
  * Send a reminder message to the Matrix room
  */
+// Store reminders in memory (in a real app, persist to backend)
+let reminders = [];
+
 async function sendReminder(event) {
     event.preventDefault();
 
@@ -300,12 +303,23 @@ async function sendReminder(event) {
     btn.textContent = "⏳ Sending...";
     showMessage("Sending reminder...", "info");
 
+    // Step 1: Notify chat that timer is starting
+    await sendCommandToMatrix(`[Widget] Timer countdown started.`);
+
     try {
         await sendReminderAtDateTime(dateTime, message);
         showMessage(`✓ Reminder set for ${dateTime}!`, "success");
 
-        // Start the countdown timer
-        startCountdownTimer(dateTime);
+        // Step 2: Notify chat that reminder is scheduled
+        await sendCommandToMatrix(`[Widget] Reminder scheduled for ${dateTime}.`);
+
+        // Add to reminders list
+        reminders.push({ dateTime, message });
+        reminders.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+        renderReminders();
+
+        // Start or update the countdown timer
+        startCountdownTimer();
 
         // Clear form (but keep timer running)
         document.getElementById("reminderForm").reset();
@@ -320,31 +334,56 @@ async function sendReminder(event) {
     }
 }
 
+// Render the list of upcoming reminders
+function renderReminders() {
+    const list = document.getElementById("reminderList");
+    list.innerHTML = "";
+    reminders.forEach((rem, idx) => {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.justifyContent = "space-between";
+        li.style.padding = "6px 0";
+        li.innerHTML = `<span><b>${formatDateTime(rem.dateTime)}</b>: ${rem.message}</span> <button data-idx="${idx}" style="background:#eee;color:#f5576c;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;">✕</button>`;
+        li.querySelector("button").onclick = function() {
+            reminders.splice(idx, 1);
+            renderReminders();
+            startCountdownTimer();
+        };
+        list.appendChild(li);
+    });
+}
+
+function formatDateTime(dt) {
+    const d = new Date(dt.replace('T', ' '));
+    return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+}
+
 // Mac-style circular countdown timer logic
 let timerInterval = null;
-function startCountdownTimer(targetDateTimeStr) {
+function startCountdownTimer() {
     const timerContainer = document.getElementById("timerContainer");
     const timerArc = document.getElementById("timerArc");
     const timerText = document.getElementById("timerText");
     if (!timerContainer || !timerArc || !timerText) return;
 
-    // Parse target time
-    const target = new Date(targetDateTimeStr.replace('T', ' '));
-    const now = new Date();
-    const total = (target - now) / 1000; // seconds
-    if (total <= 0) {
-        timerContainer.style.display = "none";
-        return;
-    }
+    // Always show timer
     timerContainer.style.display = "flex";
 
-    // SVG circle length
-    const CIRCUM = 2 * Math.PI * 54;
-
     if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
+    timerInterval = setInterval(async () => {
+        if (reminders.length === 0) {
+            timerText.textContent = "00:00:00";
+            timerArc.setAttribute('stroke-dashoffset', 0);
+            return;
+        }
+        // Next upcoming reminder
+        reminders.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+        const next = reminders[0];
+        const target = new Date(next.dateTime.replace('T', ' '));
         const now = new Date();
-        let remaining = (target - now) / 1000;
+        const total = (target - now) / 1000;
+        let remaining = total;
         if (remaining < 0) remaining = 0;
 
         // Format as HH:MM:SS
@@ -354,15 +393,21 @@ function startCountdownTimer(targetDateTimeStr) {
         timerText.textContent = `${h}:${m}:${s}`;
 
         // Animate arc
-        const percent = remaining / total;
+        const CIRCUM = 2 * Math.PI * 54;
+        let percent = 1;
+        if (reminders.length > 0) {
+            // Find how much time has passed since scheduled
+            const firstScheduled = new Date();
+            percent = remaining / ((target - firstScheduled) / 1000 + remaining);
+        }
         timerArc.setAttribute('stroke-dasharray', CIRCUM);
         timerArc.setAttribute('stroke-dashoffset', CIRCUM * (1 - percent));
 
         if (remaining <= 0) {
-            clearInterval(timerInterval);
-            timerText.textContent = "00:00:00";
-            timerArc.setAttribute('stroke-dashoffset', CIRCUM);
-            setTimeout(() => { timerContainer.style.display = "none"; }, 2000);
+            // Remove the reminder and notify chat
+            const finished = reminders.shift();
+            renderReminders();
+            await sendCommandToMatrix(`[Widget] Reminder: "${finished.message}" at ${formatDateTime(finished.dateTime)} triggered.`);
         }
     }, 1000);
 }
@@ -445,6 +490,8 @@ async function reminderTimer(params) {
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
     document.getElementById("reminderForm").addEventListener("submit", sendReminder);
+    renderReminders();
+    startCountdownTimer();
 
     // Add event listeners for command buttons
     const cmdBtns = document.querySelectorAll(".cmd-btn");
