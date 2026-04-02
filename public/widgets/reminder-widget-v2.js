@@ -348,14 +348,22 @@ async function sendReminder(event) {
 function renderReminders() {
     const list = document.getElementById("reminderList");
     list.innerHTML = "";
-            if (!calendarReminderList) return;
-            if (reminders.length) {
-                calendarReminderList.innerHTML = reminders.map(r => `
-                    <li style='margin-bottom:6px;'><span style='color:#f5576c;font-weight:bold;'>${r.date} ${r.time}</span> — ${r.msg}</li>
-                `).join('');
-            } else {
-                calendarReminderList.innerHTML = '<li style="color:#aaa;font-style:italic;">No reminders yet.</li>';
-            }
+        if (!calendarReminderList) return;
+        reminders.forEach((rem, idx) => {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.justifyContent = "space-between";
+        li.style.padding = "6px 0";
+        li.innerHTML = `<span><b>${formatDateTime(rem.dateTime)}</b>: ${rem.message}</span> <button data-idx="${idx}" style="background:#eee;color:#f5576c;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;">✕</button>`;
+        li.querySelector("button").onclick = function() {
+            reminders.splice(idx, 1);
+            renderReminders();
+            startCountdownTimer();
+        };
+        list.appendChild(li);
+    });
+}
 
 function formatDateTime(dt) {
     const d = new Date(dt.replace('T', ' '));
@@ -620,4 +628,4 @@ async function sendCommandToMatrix(command) {
     }
     const result = await response.json();
     console.log("✓ Command sent:", result.event_id);
-}}
+}
