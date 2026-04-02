@@ -511,6 +511,55 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
+    // TIMER WIDGET LOGIC (moved from HTML)
+    let timerWidgetInterval = null;
+    const timerForm = document.getElementById("timerForm");
+    const timerDisplay = document.getElementById("timerCountdownDisplay");
+    let timerTotal = 0;
+    let timerLeft = 0;
+    let timerRunning = false;
+
+    if (timerForm && timerDisplay) {
+        timerForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
+            const m = parseInt(document.getElementById("timerMinutes").value, 10) || 0;
+            const s = parseInt(document.getElementById("timerSeconds").value, 10) || 0;
+            timerTotal = h * 3600 + m * 60 + s;
+            timerLeft = timerTotal;
+            if (timerTotal <= 0) {
+                timerDisplay.textContent = "00:00:00";
+                return;
+            }
+            timerRunning = true;
+            timerDisplay.textContent = formatTimer(timerLeft);
+            if (timerWidgetInterval) clearInterval(timerWidgetInterval);
+            timerWidgetInterval = setInterval(async function() {
+                timerLeft--;
+                if (timerLeft <= 0) {
+                    timerDisplay.textContent = "00:00:00";
+                    clearInterval(timerWidgetInterval);
+                    timerRunning = false;
+                    // Send message to Matrix room
+                    try {
+                        await sendCommandToMatrix(`!remind for 0s Timer finished!`);
+                    } catch (err) {
+                        // ignore
+                    }
+                } else {
+                    timerDisplay.textContent = formatTimer(timerLeft);
+                }
+            }, 1000);
+        });
+    }
+
+    function formatTimer(sec) {
+        const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
 });
 
 // Send arbitrary command to Matrix room
