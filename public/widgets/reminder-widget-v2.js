@@ -666,3 +666,21 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('calendarSelectedDate').value = '';
     });
 });
+
+// --- Listen for bot responses to reminders ---
+document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('message', function(event) {
+        // Only process Matrix API messages
+        if (!event.data || !event.data.data || !event.data.data.body) return;
+        const body = event.data.data.body;
+        // Check if the message is a bot response to a reminder
+        if (body.startsWith('Reminder set for') || body.startsWith('You have no upcoming reminders')) {
+            // Show in a status message area if desired
+            let calendarStatus = document.getElementById('calendarStatusMessage');
+            if (calendarStatus) {
+                calendarStatus.textContent = body;
+                calendarStatus.className = 'status-message show info';
+            }
+        }
+    });
+});
