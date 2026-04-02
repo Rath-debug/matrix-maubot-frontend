@@ -227,7 +227,7 @@
             <p>Set a countdown timer</p>
         </div>
         <form id="timerForm">
-            <div class="form-group time-input-group">
+            <div class="form-group time-input-group" id="timerInputGroup">
                 <div style="flex:1;">
                     <label for="timerHours">Hours</label>
                     <input type="number" id="timerHours" min="0" max="23" value="0" style="width:100%;" />
@@ -241,12 +241,18 @@
                     <input type="number" id="timerSeconds" min="0" max="59" value="0" style="width:100%;" />
                 </div>
             </div>
+            <div class="form-group" id="timerSetBtnGroup">
+                <button type="button" id="setTimerBtn" style="width:100%;background:#f5576c;color:#fff;">Set Timer</button>
+            </div>
+            <div class="form-group" id="timerCountdownGroup" style="display:none;text-align:center;">
+                <div id="timerLiveCountdown" style="font-size:2em;color:#f5576c;font-family:monospace;">00:00:00</div>
+                <button type="button" id="resetTimerBtn" style="margin-top:10px;width:100px;background:#eee;color:#f5576c;">Reset</button>
+            </div>
             <div class="form-group">
                 <label for="timerMessage">Message:</label>
                 <input type="text" id="timerMessage" name="timerMessage" placeholder="e.g., Great job! Take a break ☕" maxlength="120" style="width:100%;" />
             </div>
-            <button type="submit" id="timerStartBtn">🚀 Start Motivational Timer</button>
-            <div id="timerCountdownDisplay" style="text-align:center; font-size:1.5em; margin:16px 0; color:#f5576c; font-family:monospace;">00:00:00</div>
+            <!-- Start button removed, replaced by Set Timer above. Countdown display moved above. -->
         </form>
         <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
     </div>
