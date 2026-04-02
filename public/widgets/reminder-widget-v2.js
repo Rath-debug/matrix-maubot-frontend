@@ -684,3 +684,95 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// --- Calendar UI Rendering and Navigation Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+    // Calendar state
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let selectedDate = null;
+
+    const calendarTable = document.getElementById('calendarTable');
+    const calendarMonthLabel = document.getElementById('calendarMonthLabel');
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+    const calendarSelectedDate = document.getElementById('calendarSelectedDate');
+
+    function renderCalendar(month, year) {
+        // Month label
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        calendarMonthLabel.textContent = `${monthNames[month]} ${year}`;
+
+        // First day of the month
+        const firstDay = new Date(year, month, 1).getDay();
+        // Days in month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Build calendar grid
+        let html = '<thead><tr>';
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (let d = 0; d < 7; d++) {
+            html += `<th style="padding:6px 0;color:#f5576c;font-weight:600;">${dayNames[d]}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        let date = 1;
+        for (let i = 0; i < 6; i++) { // 6 weeks max
+            html += '<tr>';
+            for (let j = 0; j < 7; j++) {
+                if (i === 0 && j < firstDay) {
+                    html += '<td></td>';
+                } else if (date > daysInMonth) {
+                    html += '<td></td>';
+                } else {
+                    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+                    let classes = 'cal-day';
+                    if (selectedDate === dateStr) classes += ' selected';
+                    html += `<td style="padding:0;position:relative;">
+                        <button type="button" class="cal-day-btn ${classes}" data-date="${dateStr}" style="width:36px;height:36px;border:none;background:${selectedDate===dateStr?'#ff4d6d':'#f5f6fa'};color:${selectedDate===dateStr?'#fff':'#333'};border-radius:50%;font-weight:600;cursor:pointer;transition:background 0.2s;outline:none;position:relative;">
+                            ${date}
+                        </button>
+                    </td>`;
+                    date++;
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody>';
+        calendarTable.innerHTML = html;
+
+        // Add click listeners to date buttons
+        document.querySelectorAll('.cal-day-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                selectedDate = btn.getAttribute('data-date');
+                calendarSelectedDate.value = selectedDate;
+                renderCalendar(currentMonth, currentYear);
+            });
+        });
+    }
+
+    if (prevMonthBtn && nextMonthBtn) {
+        prevMonthBtn.addEventListener('click', function() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar(currentMonth, currentYear);
+        });
+        nextMonthBtn.addEventListener('click', function() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar(currentMonth, currentYear);
+        });
+    }
+
+    // Initialize calendar
+    renderCalendar(currentMonth, currentYear);
+});
