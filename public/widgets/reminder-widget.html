@@ -265,6 +265,15 @@
 
             <div id="statusMessage" class="status-message"></div>
 
+            <!-- Circular Countdown Timer -->
+            <div id="timerContainer" style="display:none; justify-content:center; align-items:center; margin: 24px 0;">
+                <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
+                    <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
+                    <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
+                </svg>
+            </div>
+
             <div class="widget-status">
                 <span class="status-indicator disconnected" id="statusIndicator"></span>
                 <span id="statusText">Connecting to Matrix...</span>
@@ -276,5 +285,27 @@
     </script>
 
     <script src="reminder-widget-v2.js"></script>
+    <style>
+    /* Modern calendar input style (macOS/Microsoft inspired) */
+    input[type="datetime-local"] {
+        background: #f5f6fa;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 1rem;
+        color: #333;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        transition: border-color 0.2s;
+    }
+    input[type="datetime-local"]:focus {
+        border-color: #f5576c;
+        background: #fff9fa;
+    }
+    /* Hide spinner for datetime-local on Chrome */
+    input[type="datetime-local"]::-webkit-inner-spin-button,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.5) sepia(1) saturate(5) hue-rotate(-20deg);
+    }
+    </style>
 </body>
 </html>

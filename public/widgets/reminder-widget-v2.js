@@ -304,7 +304,10 @@ async function sendReminder(event) {
         await sendReminderAtDateTime(dateTime, message);
         showMessage(`✓ Reminder set for ${dateTime}!`, "success");
 
-        // Clear form
+        // Start the countdown timer
+        startCountdownTimer(dateTime);
+
+        // Clear form (but keep timer running)
         document.getElementById("reminderForm").reset();
         document.getElementById("remindDateTime").focus();
 
@@ -315,6 +318,53 @@ async function sendReminder(event) {
         btn.disabled = false;
         btn.textContent = "📤 Set Reminder";
     }
+}
+
+// Mac-style circular countdown timer logic
+let timerInterval = null;
+function startCountdownTimer(targetDateTimeStr) {
+    const timerContainer = document.getElementById("timerContainer");
+    const timerArc = document.getElementById("timerArc");
+    const timerText = document.getElementById("timerText");
+    if (!timerContainer || !timerArc || !timerText) return;
+
+    // Parse target time
+    const target = new Date(targetDateTimeStr.replace('T', ' '));
+    const now = new Date();
+    const total = (target - now) / 1000; // seconds
+    if (total <= 0) {
+        timerContainer.style.display = "none";
+        return;
+    }
+    timerContainer.style.display = "flex";
+
+    // SVG circle length
+    const CIRCUM = 2 * Math.PI * 54;
+
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        const now = new Date();
+        let remaining = (target - now) / 1000;
+        if (remaining < 0) remaining = 0;
+
+        // Format as HH:MM:SS
+        const h = String(Math.floor(remaining / 3600)).padStart(2, '0');
+        const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
+        const s = String(Math.floor(remaining % 60)).padStart(2, '0');
+        timerText.textContent = `${h}:${m}:${s}`;
+
+        // Animate arc
+        const percent = remaining / total;
+        timerArc.setAttribute('stroke-dasharray', CIRCUM);
+        timerArc.setAttribute('stroke-dashoffset', CIRCUM * (1 - percent));
+
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            timerText.textContent = "00:00:00";
+            timerArc.setAttribute('stroke-dashoffset', CIRCUM);
+            setTimeout(() => { timerContainer.style.display = "none"; }, 2000);
+        }
+    }, 1000);
 }
 
 // Send reminder using !remind <date> [message] format
