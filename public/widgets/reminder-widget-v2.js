@@ -512,17 +512,31 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // TIMER WIDGET LOGIC (moved from HTML)
+    // ENHANCED TIMER WIDGET LOGIC (stepper controls, click-to-set, countdown, reset)
     let timerWidgetInterval = null;
-    const timerForm = document.getElementById("timerForm");
-    const timerDisplay = document.getElementById("timerCountdownDisplay");
+    const timerInputGroup = document.getElementById("timerInputGroup");
+    const timerSetBtnGroup = document.getElementById("timerSetBtnGroup");
+    const timerCountdownGroup = document.getElementById("timerCountdownGroup");
+    const timerLiveCountdown = document.getElementById("timerLiveCountdown");
+    const setTimerBtn = document.getElementById("setTimerBtn");
+    const resetTimerBtn = document.getElementById("resetTimerBtn");
     let timerTotal = 0;
     let timerLeft = 0;
     let timerRunning = false;
 
-    if (timerForm && timerDisplay) {
-        timerForm.addEventListener("submit", async function(e) {
-            e.preventDefault();
+    function showTimerInputs() {
+        if (timerInputGroup) timerInputGroup.style.display = '';
+        if (timerSetBtnGroup) timerSetBtnGroup.style.display = '';
+        if (timerCountdownGroup) timerCountdownGroup.style.display = 'none';
+    }
+    function showTimerCountdown() {
+        if (timerInputGroup) timerInputGroup.style.display = 'none';
+        if (timerSetBtnGroup) timerSetBtnGroup.style.display = 'none';
+        if (timerCountdownGroup) timerCountdownGroup.style.display = '';
+    }
+
+    if (setTimerBtn && timerLiveCountdown && resetTimerBtn) {
+        setTimerBtn.addEventListener('click', function() {
             const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
             const m = parseInt(document.getElementById("timerMinutes").value, 10) || 0;
             const s = parseInt(document.getElementById("timerSeconds").value, 10) || 0;
@@ -531,29 +545,38 @@ document.addEventListener("DOMContentLoaded", () => {
             timerTotal = h * 3600 + m * 60 + s;
             timerLeft = timerTotal;
             if (timerTotal <= 0) {
-                timerDisplay.textContent = "00:00:00";
+                timerLiveCountdown.textContent = "00:00:00";
                 return;
             }
+            showTimerCountdown();
             timerRunning = true;
-            timerDisplay.textContent = formatTimer(timerLeft);
+            timerLiveCountdown.textContent = formatTimer(timerLeft);
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
             timerWidgetInterval = setInterval(async function() {
                 timerLeft--;
                 if (timerLeft <= 0) {
-                    timerDisplay.textContent = "00:00:00";
+                    timerLiveCountdown.textContent = "00:00:00";
                     clearInterval(timerWidgetInterval);
                     timerRunning = false;
-                    // Send motivational message to Matrix room2
+                    // Send motivational message to Matrix room
+                    let botMsg = userMsg || getRandomMotivation();
                     try {
                         await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
                     } catch (err) {
                         // ignore
                     }
                 } else {
-                    timerDisplay.textContent = formatTimer(timerLeft);
+                    timerLiveCountdown.textContent = formatTimer(timerLeft);
                 }
             }, 1000);
         });
+        resetTimerBtn.addEventListener('click', function() {
+            if (timerWidgetInterval) clearInterval(timerWidgetInterval);
+            timerRunning = false;
+            showTimerInputs();
+        });
+        // On load, show inputs
+        showTimerInputs();
     }
 
     function formatTimer(sec) {
