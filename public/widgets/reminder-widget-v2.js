@@ -1,3 +1,11 @@
+// Provide a random motivational message if user leaves timer message blank
+function getRandomMotivation() {
+    const pool = [
+        "",
+        "Timer finished!"
+    ];
+    return pool[Math.floor(Math.random() * pool.length)];
+}
 /**
  * Reminder Widget - Matrix Widget for creating reminders in rooms
  * Uses proper postMessage protocol with requestId correlation
