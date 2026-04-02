@@ -354,11 +354,86 @@ async function sendReminderViaMatrix(duration, unit, message) {
     const result = await response.json();
     console.log("✓ Reminder sent:", result.event_id);
 }
+// locales, locale, timezone
+async function sendListReminder(name, time, list) {
+    const reminderCommand = `!remind ${list}`;
 
+    const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                msgtype: "m.text",
+                body: reminderCommand
+            }),
+        }
+    );
+    const returnlist = await response.json();
+}
+
+async function reminderReschedule(params) {
+}
+
+async function reminderTimezone(params) {
+
+}
+async function reminderTimer(params) {
+
+}
 /**
  * Initialize on DOM ready
  */
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
     document.getElementById("reminderForm").addEventListener("submit", sendReminder);
+
+    // Add event listeners for command buttons
+    const cmdBtns = document.querySelectorAll(".cmd-btn");
+    cmdBtns.forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const command = btn.getAttribute("data-cmd");
+            if (!isReady) {
+                showMessage("Widget not ready. Please reload.", "error");
+                return;
+            }
+            try {
+                await sendCommandToMatrix(command);
+                showMessage(`✓ Sent: ${command}`, "success");
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, "error");
+            }
+        });
+    });
 });
+
+// Send arbitrary command to Matrix room
+async function sendCommandToMatrix(command) {
+    if (!roomId || !homeserverUrl) {
+        throw new Error("Not connected to Matrix");
+    }
+    let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
+    if (!token) {
+        throw new Error("No access token available");
+    }
+    const txnId = `${Date.now()}_${Math.random()}`;
+    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${roomId}/send/m.room.message/${txnId}`;
+    const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            msgtype: "m.text",
+            body: command
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`Matrix API error: ${response.status}`);
+    }
+    const result = await response.json();
+    console.log("✓ Command sent:", result.event_id);
+}

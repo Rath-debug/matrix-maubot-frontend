@@ -260,6 +260,19 @@
 
             <button type="submit" id="submitBtn">📤 Set Reminder</button>
 
+            <div class="form-group" style="margin-top: 24px;">
+                <label>Quick Commands:</label>
+                <div id="commandButtons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button type="button" class="cmd-btn" data-cmd="!remind help">Help</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind list">List</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind locales">Locales</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind locale">Locale</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind timezone">Timezone</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind for">For</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
+                </div>
+            </div>
+
             <div id="statusMessage" class="status-message"></div>
 
             <div class="widget-status">
