@@ -422,6 +422,7 @@ async function sendReminderAtDateTime(dateTime, message) {
     // We'll use "YYYY-MM-DD HH:MM" (24h) for compatibility
     const formatted = dateTime.replace('T', ' ');
     const reminderCommand = `!remind ${formatted} ${message.trim()}`;
+    debugLogReminderCommand(reminderCommand);
     await sendCommandToMatrix(reminderCommand);
 }
 
@@ -621,4 +622,10 @@ async function sendCommandToMatrix(command) {
     }
     const result = await response.json();
     console.log("✓ Command sent:", result.event_id);
+}
+
+// Add this utility to log the exact command and room info being sent
+function debugLogReminderCommand(command) {
+    console.log('[DEBUG] Sending reminder command:', command);
+    console.log('[DEBUG] roomId:', roomId, 'homeserverUrl:', homeserverUrl, 'userId:', userId);
 }
