@@ -418,11 +418,12 @@
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            padding: 18px 12px 18px 12px;
+            padding: 18px 12px;
             display: flex;
             flex-direction: column;
             align-items: stretch;
             height: fit-content;
+            transition: all 0.3s;
         }
         .sidebar-header {
             font-weight: bold;
@@ -446,6 +447,7 @@
             padding: 8px 0;
             transition: background 0.2s, color 0.2s;
             cursor: pointer;
+            min-width: 100px;
         }
         .sidebar-commands .cmd-btn:hover {
             background: #f093fb22;
@@ -457,24 +459,40 @@
                 gap: 0;
             }
             .sidebar {
-                flex-direction: row;
-                min-width: 0;
                 width: 100%;
+                min-width: 0;
                 margin-bottom: 18px;
-                justify-content: center;
-                align-items: center;
-                box-shadow: none;
                 border-radius: 8px;
-                padding: 10px 0 10px 0;
+                box-shadow: none;
+                padding: 10px 0;
+                align-items: center;
+                justify-content: center;
             }
             .sidebar-header {
                 display: none;
             }
             .sidebar-commands {
                 flex-direction: row;
+                flex-wrap: wrap;
                 gap: 8px;
                 width: 100%;
                 justify-content: center;
+            }
+            .sidebar-commands .cmd-btn {
+                flex: 1 1 120px;
+                min-width: 90px;
+                margin: 2px 0;
+            }
+        }
+        @media (max-width: 600px) {
+            .sidebar-commands .cmd-btn {
+                flex: 1 1 100px;
+                min-width: 80px;
+                font-size: 0.95em;
+                padding: 7px 0;
+            }
+            .sidebar {
+                padding: 8px 0;
             }
         }
         </style>
