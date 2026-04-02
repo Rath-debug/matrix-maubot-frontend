@@ -629,3 +629,40 @@ function debugLogReminderCommand(command) {
     console.log('[DEBUG] Sending reminder command:', command);
     console.log('[DEBUG] roomId:', roomId, 'homeserverUrl:', homeserverUrl, 'userId:', userId);
 }
+
+// --- Calendar Reminder Integration ---
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarForm = document.getElementById('calendarReminderForm');
+    if (!calendarForm) return;
+    calendarForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const selectedDate = document.getElementById('calendarSelectedDate').value;
+        const calendarTime = document.getElementById('calendarTime').value;
+        const calendarMessage = document.getElementById('calendarMessage').value.trim();
+        const calendarStatus = document.getElementById('calendarStatusMessage');
+        if (!selectedDate) {
+            calendarStatus.textContent = 'Please select a date.';
+            calendarStatus.className = 'status-message show error';
+            return;
+        }
+        if (!calendarTime || !calendarMessage) {
+            calendarStatus.textContent = 'Please enter time and message.';
+            calendarStatus.className = 'status-message show error';
+            return;
+        }
+        // Format: YYYY-MM-DD HH:MM
+        const dateTime = `${selectedDate} ${calendarTime}`;
+        try {
+            calendarStatus.textContent = 'Sending reminder...';
+            calendarStatus.className = 'status-message show info';
+            await sendReminderAtDateTime(dateTime, calendarMessage);
+            calendarStatus.textContent = 'Reminder set!';
+            calendarStatus.className = 'status-message show success';
+        } catch (err) {
+            calendarStatus.textContent = 'Error: ' + err.message;
+            calendarStatus.className = 'status-message show error';
+        }
+        calendarForm.reset();
+        document.getElementById('calendarSelectedDate').value = '';
+    });
+});
