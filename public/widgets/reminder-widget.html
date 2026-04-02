@@ -228,24 +228,14 @@
 
         <form id="reminderForm">
             <div class="form-group">
-                <label for="duration">When:</label>
-                <div class="time-input-group">
-                    <input
-                        type="number"
-                        id="duration"
-                        name="duration"
-                        min="1"
-                        value="5"
-                        placeholder="5"
-                        required
-                        style="flex: 1; width: auto;"
-                    />
-                    <select id="unit" name="unit" class="unit-select">
-                        <option value="m">Minutes</option>
-                        <option value="h">Hours</option>
-                        <option value="d">Days</option>
-                    </select>
-                </div>
+                <label for="remindDateTime">When:</label>
+                <input
+                    type="datetime-local"
+                    id="remindDateTime"
+                    name="remindDateTime"
+                    required
+                    style="width: 100%;"
+                />
             </div>
 
             <div class="form-group">

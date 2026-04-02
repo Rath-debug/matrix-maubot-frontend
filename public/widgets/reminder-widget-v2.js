@@ -287,12 +287,11 @@ async function sendReminder(event) {
         return;
     }
 
-    const duration = document.getElementById("duration").value;
-    const unit = document.getElementById("unit").value;
+    const dateTime = document.getElementById("remindDateTime").value;
     const message = document.getElementById("message").value;
     const btn = document.getElementById("submitBtn");
 
-    if (!duration || !message.trim()) {
+    if (!dateTime || !message.trim()) {
         showMessage("Please fill in all fields", "error");
         return;
     }
@@ -302,13 +301,12 @@ async function sendReminder(event) {
     showMessage("Sending reminder...", "info");
 
     try {
-        await sendReminderViaMatrix(duration, unit, message);
-        showMessage(`✓ Reminder set for ${duration}${unit}!`, "success");
+        await sendReminderAtDateTime(dateTime, message);
+        showMessage(`✓ Reminder set for ${dateTime}!`, "success");
 
         // Clear form
         document.getElementById("reminderForm").reset();
-        document.getElementById("duration").value = "5";
-        document.getElementById("message").focus();
+        document.getElementById("remindDateTime").focus();
 
     } catch (error) {
         console.error("❌ Error:", error.message);
@@ -317,6 +315,15 @@ async function sendReminder(event) {
         btn.disabled = false;
         btn.textContent = "📤 Set Reminder";
     }
+}
+
+// Send reminder using !remind <date> [message] format
+async function sendReminderAtDateTime(dateTime, message) {
+    // Convert datetime-local value (YYYY-MM-DDTHH:MM) to a format the bot understands (ISO or readable)
+    // We'll use "YYYY-MM-DD HH:MM" (24h) for compatibility
+    const formatted = dateTime.replace('T', ' ');
+    const reminderCommand = `!remind ${formatted} ${message.trim()}`;
+    await sendCommandToMatrix(reminderCommand);
 }
 
 async function sendReminderViaMatrix(duration, unit, message) {
