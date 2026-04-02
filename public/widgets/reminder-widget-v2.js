@@ -99,10 +99,37 @@ class MatrixWidgetAPI {
 let widgetApi = new MatrixWidgetAPI();
 let openIdToken = null;
 
+/**
+ * Update the status indicator and text
+ */
+function updateStatus(text, title, connected) {
+    const indicator = document.getElementById("statusIndicator");
+    const statusText = document.getElementById("statusText");
+
+    if (indicator && statusText) {
+        indicator.className = `status-indicator ${connected ? "connected" : "disconnected"}`;
+        statusText.textContent = text;
+        statusText.title = title;
+    }
+}
 
 /**
- * Standalone Matrix context initialization
+ * Show a message to the user
  */
+function showMessage(text, type) {
+    const el = document.getElementById("statusMessage");
+    if (!el) return;
+
+    el.textContent = text;
+    el.className = `status-message show ${type}`;
+
+    if (type === "success") {
+        setTimeout(() => {
+            el.classList.remove("show");
+        }, 3000);
+    }
+}
+
 function initStandaloneMatrixContext() {
     const params = new URLSearchParams(window.location.search);
     const storage = {
@@ -147,30 +174,6 @@ function initStandaloneMatrixContext() {
 
     console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
 }
-
-/**
- * Update the status indicator and text
- */
-function updateStatus(text, title, connected) {
-    const indicator = document.getElementById("statusIndicator");
-    const statusText = document.getElementById("statusText");
-
-    if (indicator && statusText) {
-        indicator.className = `status-indicator ${connected ? "connected" : "disconnected"}`;
-        statusText.textContent = text;
-        statusText.title = title;
-    }
-}
-
-/**
- * Show a message to the user
- */
-function showMessage(text, type) {
-    const el = document.getElementById("statusMessage");
-    if (!el) return;
-
-    el.textContent = text;
-    el.className = `status-message show ${type}`;
 
 /**
  * Initialize widget by handshaking with Element
@@ -588,5 +591,4 @@ async function sendCommandToMatrix(command) {
     }
     const result = await response.json();
     console.log("✓ Command sent:", result.event_id);
-}
 }
