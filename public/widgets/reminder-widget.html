@@ -18,6 +18,33 @@
             padding: 20px;
         }
 
+        :root {
+            --brand:     #ff4d6d;
+            --brand-2:   #ff85a1;
+            --bg:        #0f0f12;
+            --surface:   #18181f;
+            --surface-2: #22222c;
+            --border:    #2e2e3a;
+            --text:      #f0f0f5;
+            --muted:     #7a7a95;
+            --success:   #34d399;
+            --error:     #f87171;
+            --info:      #60a5fa;
+            --radius:    16px;
+            --mono:      'DM Mono', monospace;
+            --sans:      'DM Sans', sans-serif;
+            --transition: 0.2s cubic-bezier(.4,0,.2,1);
+        }
+
+        .timer-card, .widget-container, .reminder-card, .sidebar {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 6px 32px 0 rgba(0,0,0,0.18);
+            padding: 28px 28px 22px 28px;
+            margin-bottom: 0;
+        }
+
         .widget-container {
             background: white;
             border-radius: 12px;
@@ -219,8 +246,23 @@
     </style>
 </head>
 <body>
-    <!-- TIMER WIDGET -->
-    <div class="widget-container" style="margin-bottom: 32px;">
+        <div class="main-layout">
+            <!-- Sidebar with Quick Commands -->
+            <aside class="sidebar">
+                <div class="sidebar-header">Quick Commands</div>
+                <div id="commandButtons" class="sidebar-commands">
+                    <button type="button" class="cmd-btn" data-cmd="!remind help">Help</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind list">List</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind locales">Locales</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind locale">Locale</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind timezone">Timezone</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind for">For</button>
+                    <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
+                </div>
+            </aside>
+            <div style="flex:1;min-width:0;">
+        <!-- TIMER WIDGET -->
+        <div class="widget-container" style="margin-bottom: 32px;">
         <div class="widget-header">
             <div class="icon">⏱️</div>
             <h2>Timer</h2>
@@ -336,165 +378,270 @@
         <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
     </div>
 
-    <div class="main-layout">
-        <!-- Sidebar with Quick Commands -->
-        <aside class="sidebar">
-            <div class="sidebar-header">Quick Commands</div>
-            <div id="commandButtons" class="sidebar-commands">
-                <button type="button" class="cmd-btn" data-cmd="!remind help">Help</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind list">List</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind locales">Locales</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind locale">Locale</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind timezone">Timezone</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind for">For</button>
-                <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
-            </div>
-        </aside>
-        <!-- SCHEDULED REMINDER WIDGET -->
+        <!-- SCHEDULED REMINDER WIDGET (Calendar Style) -->
         <div class="widget-container">
-            <!-- Circular Countdown Timer at the top -->
-            <div id="timerContainer" style="display:flex; justify-content:center; align-items:center; margin: 24px 0;">
-                <svg id="countdownTimer" width="120" height="120" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="54" stroke="#e0e0e0" stroke-width="12" fill="none"/>
-                    <circle id="timerArc" cx="60" cy="60" r="54" stroke="#f5576c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"/>
-                    <text id="timerText" x="60" y="68" text-anchor="middle" font-size="2rem" fill="#333" font-family="inherit">00:00:00</text>
-                </svg>
-            </div>
             <div class="widget-header">
-                <div class="icon">⏰</div>
-                <h2>Create Reminder</h2>
-                <p>Set a reminder in this room</p>
+                <div class="icon">📅</div>
+                <h2>Calendar Reminder</h2>
+                <p>Pick a date, set a time and message</p>
             </div>
-
-            <form id="reminderForm">
-                <div class="form-group">
-                    <label for="remindDateTime">When:</label>
-                    <input
-                        type="datetime-local"
-                        id="remindDateTime"
-                        name="remindDateTime"
-                        required
-                        style="width: 100%;"
-                    />
+            <div id="calendarReminder">
+                <div id="calendarNav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <button type="button" id="prevMonth" style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#f5576c;">&#8592;</button>
+                    <span id="calendarMonthLabel" style="font-weight:600;font-size:1.1em;color:#333;"></span>
+                    <button type="button" id="nextMonth" style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#f5576c;">&#8594;</button>
                 </div>
-
-                <div class="form-group">
-                    <label for="message">Reminder Message:</label>
-                    <textarea
-                        id="message"
-                        name="message"
-                        placeholder="e.g., Take a break, drink water, or check emails..."
-                        required
-                    ></textarea>
+                <table id="calendarTable" style="width:100%;border-collapse:collapse;margin-bottom:18px;"></table>
+                <form id="calendarReminderForm">
+                    <div class="form-group">
+                        <label for="calendarSelectedDate">Date:</label>
+                        <input type="text" id="calendarSelectedDate" name="calendarSelectedDate" readonly style="background:#f5f6fa;cursor:not-allowed;" required />
+                    </div>
+                    <div class="form-group" style="display:flex;gap:10px;">
+                        <div style="flex:1;">
+                            <label for="calendarTime">Time:</label>
+                            <input type="time" id="calendarTime" name="calendarTime" required style="width:100%;" />
+                        </div>
+                        <div style="flex:2;">
+                            <label for="calendarMessage">Message:</label>
+                            <input type="text" id="calendarMessage" name="calendarMessage" placeholder="e.g., Meeting, break, call..." maxlength="120" required />
+                        </div>
+                    </div>
+                    <button type="submit" id="calendarSetReminderBtn">Set Reminder</button>
+                </form>
+                <div id="calendarStatusMessage" class="status-message"></div>
+                <div id="calendarUpcoming" style="margin-top:24px;">
+                    <label style="font-weight:600;color:#333;">Upcoming Reminders</label>
+                    <ul id="calendarReminderList" style="list-style:none;padding:0;margin:10px 0 0 0;"></ul>
                 </div>
-
-                <button type="submit" id="submitBtn">📤 Set Reminder</button>
-                <div id="statusMessage" class="status-message"></div>
-
-                <!-- Upcoming Reminders List -->
-                <div id="reminderListContainer" style="margin-top: 24px;">
-                    <label style="font-weight:600; color:#333;">Upcoming Reminders</label>
-                    <ul id="reminderList" style="list-style:none; padding:0; margin:10px 0 0 0;"></ul>
-                </div>
-
-
-                <div class="widget-status">
-                    <span class="status-indicator disconnected" id="statusIndicator"></span>
-                    <span id="statusText">Connecting to Matrix...</span>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+        <script>
+        // Simple calendar logic for the reminder widget
+        (function() {
+            const calendarTable = document.getElementById('calendarTable');
+            const monthLabel = document.getElementById('calendarMonthLabel');
+            const prevMonthBtn = document.getElementById('prevMonth');
+            const nextMonthBtn = document.getElementById('nextMonth');
+            const selectedDateInput = document.getElementById('calendarSelectedDate');
+            const calendarForm = document.getElementById('calendarReminderForm');
+            const calendarTime = document.getElementById('calendarTime');
+            const calendarMessage = document.getElementById('calendarMessage');
+            const calendarStatus = document.getElementById('calendarStatusMessage');
+            const calendarReminderList = document.getElementById('calendarReminderList');
+            let reminders = [];
+            let today = new Date();
+            let currentMonth = today.getMonth();
+            let currentYear = today.getFullYear();
+            let selectedDate = null;
+
+            function renderCalendar(month, year) {
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                let html = '<thead><tr>';
+                const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                for (let d of days) html += `<th style="color:#f5576c;font-weight:600;padding:4px 0;">${d}</th>`;
+                html += '</tr></thead><tbody><tr>';
+                let day = 1;
+                for (let i = 0; i < 6; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        if (i === 0 && j < firstDay) {
+                            html += '<td></td>';
+                        } else if (day > daysInMonth) {
+                            html += '<td></td>';
+                        } else {
+                            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                            const isToday = (day === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+                            html += `<td style="padding:2px;text-align:center;">
+                                <button type="button" class="calendar-day-btn" data-date="${dateStr}" style="width:32px;height:32px;border-radius:50%;border:none;outline:none;cursor:pointer;${isToday?'background:#f5576c;color:#fff;':'background:#f5f6fa;color:#333;'}font-weight:${isToday?'bold':'normal'};">${day}</button>
+                            </td>`;
+                            day++;
+                        }
+                    }
+                    html += '</tr>';
+                    if (day > daysInMonth) break;
+                    if (i < 5) html += '<tr>';
+                }
+                html += '</tbody>';
+                calendarTable.innerHTML = html;
+                monthLabel.textContent = `${today.toLocaleString('default', { month: 'long' })} ${year}`;
+                document.querySelectorAll('.calendar-day-btn').forEach(btn => {
+                    btn.onclick = function() {
+                        selectedDate = btn.getAttribute('data-date');
+                        selectedDateInput.value = selectedDate;
+                    };
+                });
+            }
+            prevMonthBtn.onclick = function() {
+                if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
+                renderCalendar(currentMonth, currentYear);
+            };
+            nextMonthBtn.onclick = function() {
+                if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
+                renderCalendar(currentMonth, currentYear);
+            };
+            calendarForm.onsubmit = function(e) {
+                e.preventDefault();
+                if (!selectedDate) {
+                    calendarStatus.textContent = 'Please select a date.';
+                    calendarStatus.className = 'status-message show error';
+                    return;
+                }
+                const time = calendarTime.value;
+                const msg = calendarMessage.value.trim();
+                if (!time || !msg) {
+                    calendarStatus.textContent = 'Please enter time and message.';
+                    calendarStatus.className = 'status-message show error';
+                    return;
+                }
+                reminders.push({ date: selectedDate, time, msg });
+                renderReminders();
+                calendarStatus.textContent = 'Reminder set!';
+                calendarStatus.className = 'status-message show success';
+                calendarForm.reset();
+                selectedDateInput.value = '';
+                selectedDate = null;
+            };
+            function renderReminders() {
+                calendarReminderList.innerHTML = reminders.length ? reminders.map(r => `<li style='margin-bottom:6px;'><span style='color:#f5576c;font-weight:bold;'>${r.date} ${r.time}</span> — ${r.msg}</li>`).join('') : '<li style="color:#aaa;font-style:italic;">No reminders yet.</li>';
+            }
+            // Initial render
+            renderCalendar(currentMonth, currentYear);
+            renderReminders();
+        })();
+        </script>
+            </div>
+        </div>
         <style>
-        .main-layout {
-            display: flex;
-            gap: 24px;
-            align-items: flex-start;
-            justify-content: center;
-            margin-bottom: 32px;
-        }
-        .sidebar {
-            min-width: 160px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            padding: 18px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            height: fit-content;
-            transition: all 0.3s;
-        }
-        .sidebar-header {
-            font-weight: bold;
-            color: #f5576c;
-            margin-bottom: 12px;
-            text-align: center;
-            font-size: 1.1em;
-        }
-        .sidebar-commands {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .sidebar-commands .cmd-btn {
-            background: #f5f6fa;
-            color: #f5576c;
-            border: 1px solid #f093fb44;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: 500;
-            padding: 8px 0;
-            transition: background 0.2s, color 0.2s;
-            cursor: pointer;
-            min-width: 100px;
-        }
-        .sidebar-commands .cmd-btn:hover {
-            background: #f093fb22;
-            color: #d81b60;
-        }
-        @media (max-width: 900px) {
-            .main-layout {
-                flex-direction: column;
-                gap: 0;
-            }
-            .sidebar {
-                width: 100%;
-                min-width: 0;
-                margin-bottom: 18px;
-                border-radius: 8px;
-                box-shadow: none;
-                padding: 10px 0;
-                align-items: center;
-                justify-content: center;
-            }
-            .sidebar-header {
-                display: none;
-            }
-            .sidebar-commands {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 8px;
-                width: 100%;
-                justify-content: center;
-            }
-            .sidebar-commands .cmd-btn {
-                flex: 1 1 120px;
-                min-width: 90px;
-                margin: 2px 0;
-            }
-        }
-        @media (max-width: 600px) {
-            .sidebar-commands .cmd-btn {
-                flex: 1 1 100px;
-                min-width: 80px;
-                font-size: 0.95em;
-                padding: 7px 0;
-            }
-            .sidebar {
-                padding: 8px 0;
-            }
-        }
+                .main-layout {
+                    display: flex;
+                    gap: 24px;
+                    align-items: flex-start;
+                    justify-content: center;
+                    margin-bottom: 32px;
+                }
+                .sidebar {
+                    min-width: 160px;
+                    max-width: 220px;
+                    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.13);
+                    padding: 18px 12px 18px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    position: sticky;
+                    top: 20px;
+                }
+                .sidebar-header {
+                    font-weight: bold;
+                    color: #f5576c;
+                    margin-bottom: 12px;
+                    text-align: center;
+                    font-size: 1.1em;
+                }
+                .sidebar-commands {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .sidebar-commands .cmd-btn {
+                    background: var(--surface-2);
+                    color: var(--brand);
+                    border: 1.5px solid var(--border);
+                    border-radius: 8px;
+                    font-family: var(--mono);
+                    font-size: 0.85rem;
+                    letter-spacing: 0.04em;
+                    padding: 11px 12px 11px 12px;
+                    text-align: left;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    transition: color var(--transition), border-color var(--transition), background var(--transition);
+                    overflow: hidden;
+                    min-height: 38px;
+                    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.07);
+                }
+                .sidebar-commands .cmd-btn:hover, .sidebar-commands .cmd-btn:focus {
+                    color: #fff;
+                    border-color: var(--brand);
+                    background: var(--brand);
+                    outline: none;
+                }
+
+                .cal-day.selected {
+                    background: var(--brand);
+                    color: #fff;
+                    font-weight: 600;
+                    box-shadow: 0 2px 8px 0 rgba(255,77,109,0.18);
+                    border: 2px solid #fff2;
+                }
+
+                .cal-day.has-reminder::before {
+                    content: '';
+                    position: absolute; top: 3px; right: 3px;
+                    width: 6px; height: 6px;
+                    border-radius: 50%;
+                    background: var(--brand-2);
+                    box-shadow: 0 0 4px 1px #ff4d6d44;
+                }
+
+                .btn-primary {
+                    background: var(--brand);
+                    color: #fff;
+                    box-shadow: 0 2px 12px 0 rgba(255,77,109,0.13);
+                }
+                .btn-primary:hover, .btn-primary:focus {
+                    background: #e63659;
+                    color: #fff;
+                    transform: translateY(-1px);
+                    outline: none;
+                }
+                .btn-primary:active { transform: translateY(0); }
+                .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+                @media (max-width: 900px) {
+                    .main-layout {
+                        flex-direction: column;
+                        gap: 0;
+                    }
+                    .sidebar {
+                        width: 100%;
+                        min-width: 0;
+                        max-width: 100%;
+                        margin-bottom: 18px;
+                        border-radius: 8px;
+                        box-shadow: none;
+                        padding: 10px 0;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .sidebar-header {
+                        display: none;
+                    }
+                    .sidebar-commands {
+                        flex-direction: row;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                        width: 100%;
+                        justify-content: center;
+                    }
+                    .sidebar-commands .cmd-btn {
+                        flex: 1 1 120px;
+                        min-width: 90px;
+                        margin: 2px 0;
+                    }
+                }
+                @media (max-width: 600px) {
+                    .sidebar-commands .cmd-btn {
+                        flex: 1 1 100px;
+                        min-width: 80px;
+                        font-size: 0.95em;
+                        padding: 7px 0;
+                    }
+                    .sidebar {
+                        padding: 8px 0;
+                    }
+                }
         </style>
     <script>
     window.MATRIX_ACCESS_TOKEN = "mct_0mE0jCRpa15mGnszRoO9kOkTsuNDqg_0avSrz";
