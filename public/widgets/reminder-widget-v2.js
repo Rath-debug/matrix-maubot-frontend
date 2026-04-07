@@ -284,135 +284,116 @@ async function initWidget() {
     }
 }
 
-/**
- * Send a reminder message to the Matrix room
- */
-// Store reminders in memory (in a real app, persist to backend)
-let reminders = [];
-
-async function sendReminder(event) {
-    event.preventDefault();
-
-    if (!isReady) {
-        showMessage("Widget not ready. Please reload.", "error");
-        return;
-    }
-
-    const dateTime = document.getElementById("remindDateTime").value;
-    const message = document.getElementById("message").value;
-    const btn = document.getElementById("submitBtn");
-
-    if (!dateTime || !message.trim()) {
-        showMessage("Please fill in all fields", "error");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "⏳ Sending...";
-    showMessage("Sending reminder...", "info");
-
-    // Step 1: Notify chat that timer is starting
-    await sendCommandToMatrix(`[Widget] Timer countdown started.`);
-
-    try {
-        await sendReminderAtDateTime(dateTime, message);
-        showMessage(`✓ Reminder set for ${dateTime}!`, "success");
-
-        // Step 2: Notify chat that reminder is scheduled
-        await sendCommandToMatrix(`[Widget] Reminder scheduled for ${dateTime}.`);
-
-        // Add to reminders list
-        reminders.push({ dateTime, message });
-        reminders.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-        renderReminders();
-
-        // Start or update the countdown timer
-        startCountdownTimer();
-
-        // Clear form (but keep timer running)
-        const reminderForm = document.getElementById("reminderForm");
-        if (reminderForm) reminderForm.reset();
-        const remindDateTime = document.getElementById("remindDateTime");
-        if (remindDateTime) remindDateTime.focus();
-
-    } catch (error) {
-        console.error("❌ Error:", error.message);
-        showMessage(`Error: ${error.message}`, "error");
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "📤 Set Reminder";
-    }
-}
-
-// Render the list of upcoming reminders
-function renderReminders() {
-    // For calendar widget reminders
-    const calendarReminderList = document.getElementById("calendarReminderList");
-    if (!calendarReminderList) return;
-    if (reminders.length) {
-        calendarReminderList.innerHTML = reminders.map(r =>
-            `<li style='margin-bottom:6px;'><span style='color:#f5576c;font-weight:bold;'>${r.date ? r.date : formatDateTime(r.dateTime)} ${r.time ? r.time : ''}</span> — ${r.msg ? r.msg : r.message}</li>`
-        ).join('');
-    } else {
-        calendarReminderList.innerHTML = '<li style="color:#aaa;font-style:italic;">No reminders yet.</li>';
-    }
-}
+let calendarReminders = [];
+let activeTimer = null;
+let timerWidgetInterval = null;
+let calendarCountdownInterval = null;
 
 function formatDateTime(dt) {
-    const d = new Date(dt.replace('T', ' '));
+    const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
     return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 }
 
-// Mac-style circular countdown timer logic
-let timerInterval = null;
-function startCountdownTimer() {
-    const timerContainer = document.getElementById("timerContainer");
-    const timerArc = document.getElementById("timerArc");
-    const timerText = document.getElementById("timerText");
-    if (!timerContainer || !timerArc || !timerText) return;
+function formatDuration(totalSeconds) {
+    const safeSeconds = Math.max(0, totalSeconds);
+    const h = String(Math.floor(safeSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(safeSeconds % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
 
-    // Always show timer
-    timerContainer.style.display = "flex";
+function renderCalendarReminderCountdowns() {
+    const calendarReminderList = document.getElementById('calendarReminderList');
+    if (!calendarReminderList) return;
 
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(async () => {
-        if (reminders.length === 0) {
-            timerText.textContent = "00:00:00";
-            timerArc.setAttribute('stroke-dashoffset', 0);
+    if (calendarReminders.length === 0) {
+        calendarReminderList.innerHTML = '<li style="color:#888;">No active reminders</li>';
+        return;
+    }
+
+    const now = Date.now();
+    calendarReminderList.innerHTML = calendarReminders
+        .sort((a, b) => a.targetMs - b.targetMs)
+        .map((item) => {
+            const remaining = Math.max(0, Math.ceil((item.targetMs - now) / 1000));
+            return `<li style="list-style:none;margin-bottom:8px;padding:10px;border:1px solid #e6e6ef;border-radius:8px;background:#fafafe;">
+                <div style="font-weight:600;color:#333;">${item.message}</div>
+                <div style="font-size:0.85rem;color:#666;">${formatDateTime(new Date(item.targetMs))}</div>
+                <div style="font-family:monospace;font-size:1rem;color:#f5576c;">${formatDuration(remaining)}</div>
+            </li>`;
+        })
+        .join('');
+}
+
+function renderUnifiedUpcoming() {
+    const unifiedUpcomingList = document.getElementById('unifiedUpcomingList');
+    if (!unifiedUpcomingList) return;
+
+    const now = Date.now();
+    const items = [];
+
+    if (activeTimer && activeTimer.targetMs > now) {
+        items.push({
+            kind: 'Timer',
+            message: activeTimer.message || 'Timer',
+            targetMs: activeTimer.targetMs
+        });
+    }
+
+    calendarReminders.forEach((item) => {
+        if (item.targetMs > now) {
+            items.push({
+                kind: 'Calendar',
+                message: item.message,
+                targetMs: item.targetMs
+            });
+        }
+    });
+
+    items.sort((a, b) => a.targetMs - b.targetMs);
+
+    if (items.length === 0) {
+        unifiedUpcomingList.innerHTML = '<li style="color:#888;">No active countdowns</li>';
+        return;
+    }
+
+    unifiedUpcomingList.innerHTML = items
+        .map((item) => {
+            const remaining = Math.max(0, Math.ceil((item.targetMs - now) / 1000));
+            return `<li style="list-style:none;margin-bottom:8px;padding:8px 10px;border:1px solid #ececf4;border-radius:8px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                <span style="color:#333;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.kind}: ${item.message}</span>
+                <span style="font-family:monospace;color:#f5576c;font-size:0.95rem;">${formatDuration(remaining)}</span>
+            </li>`;
+        })
+        .join('');
+}
+
+function refreshCountdownViews() {
+    renderCalendarReminderCountdowns();
+    renderUnifiedUpcoming();
+}
+
+function startCalendarCountdownTicker() {
+    if (calendarCountdownInterval) return;
+
+    calendarCountdownInterval = setInterval(() => {
+        if (calendarReminders.length === 0) {
+            refreshCountdownViews();
             return;
         }
-        // Next upcoming reminder
-        reminders.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-        const next = reminders[0];
-        const target = new Date(next.dateTime.replace('T', ' '));
-        const now = new Date();
-        const total = (target - now) / 1000;
-        let remaining = total;
-        if (remaining < 0) remaining = 0;
 
-        // Format as HH:MM:SS
-        const h = String(Math.floor(remaining / 3600)).padStart(2, '0');
-        const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
-        const s = String(Math.floor(remaining % 60)).padStart(2, '0');
-        timerText.textContent = `${h}:${m}:${s}`;
+        const now = Date.now();
+        const dueItems = calendarReminders.filter((item) => item.targetMs <= now);
+        calendarReminders = calendarReminders.filter((item) => item.targetMs > now);
 
-        // Animate arc
-        const CIRCUM = 2 * Math.PI * 54;
-        let percent = 1;
-        if (reminders.length > 0) {
-            // Find how much time has passed since scheduled
-            const firstScheduled = new Date();
-            percent = remaining / ((target - firstScheduled) / 1000 + remaining);
-        }
-        timerArc.setAttribute('stroke-dasharray', CIRCUM);
-        timerArc.setAttribute('stroke-dashoffset', CIRCUM * (1 - percent));
+        dueItems.forEach((item) => {
+            if (isReady) {
+                sendCommandToMatrix(`[Widget] Reminder: "${item.message}" at ${formatDateTime(new Date(item.targetMs))} triggered.`)
+                    .catch(() => {});
+            }
+        });
 
-        if (remaining <= 0) {
-            // Remove the reminder and notify chat
-            const finished = reminders.shift();
-            renderReminders();
-            await sendCommandToMatrix(`[Widget] Reminder: "${finished.message}" at ${formatDateTime(finished.dateTime)} triggered.`);
-        }
+        refreshCountdownViews();
     }, 1000);
 }
 
@@ -494,12 +475,8 @@ async function reminderTimer(params) {
  */
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
-    const reminderForm = document.getElementById("reminderForm");
-    if (reminderForm) {
-        reminderForm.addEventListener("submit", sendReminder);
-    }
-    renderReminders();
-    startCountdownTimer();
+    startCalendarCountdownTicker();
+    refreshCountdownViews();
 
     // Add event listeners for command buttons
     const cmdBtns = document.querySelectorAll(".cmd-btn");
@@ -520,8 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // ENHANCED TIMER WIDGET LOGIC (stepper controls, click-to-set, countdown, reset)
-    let timerWidgetInterval = null;
+    // Minimal timer flow: set -> running countdown -> reset
     const timerInputGroup = document.getElementById("timerInputGroup");
     const timerSetBtnGroup = document.getElementById("timerSetBtnGroup");
     const timerCountdownPanel = document.getElementById("timerCountdownPanel");
@@ -529,19 +505,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const timerLiveCountdown = document.getElementById("timerLiveCountdown");
     const setTimerBtn = document.getElementById("setTimerBtn");
     const resetTimerBtn = document.getElementById("resetTimerBtn");
-    let timerTotal = 0;
-    let timerLeft = 0;
-    let timerRunning = false;
+    const timerMessageInput = document.getElementById("timerMessage");
+    const timerMessageGroup = timerMessageInput ? timerMessageInput.closest(".form-group") : null;
+
+    const calendarForm = document.getElementById('calendarReminderForm');
+    const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
+    const calendarStatus = document.getElementById('calendarStatusMessage');
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
         if (timerSetBtnGroup) timerSetBtnGroup.style.display = '';
+        if (timerMessageGroup) timerMessageGroup.style.display = '';
         if (timerCountdownPanel) timerCountdownPanel.style.display = 'none';
         if (timerCountdownGroup) timerCountdownGroup.style.display = 'none';
     }
+
     function showTimerCountdown() {
         if (timerInputGroup) timerInputGroup.style.display = 'none';
         if (timerSetBtnGroup) timerSetBtnGroup.style.display = 'none';
+        if (timerMessageGroup) timerMessageGroup.style.display = 'none';
         if (timerCountdownPanel) timerCountdownPanel.style.display = '';
         if (timerCountdownGroup) timerCountdownGroup.style.display = '';
     }
@@ -551,50 +533,120 @@ document.addEventListener("DOMContentLoaded", () => {
             const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
             const m = parseInt(document.getElementById("timerMinutes").value, 10) || 0;
             const s = parseInt(document.getElementById("timerSeconds").value, 10) || 0;
-            const msgInput = document.getElementById("timerMessage");
-            const userMsg = msgInput ? msgInput.value.trim() : "";
-            timerTotal = h * 3600 + m * 60 + s;
-            timerLeft = timerTotal;
+            const userMsg = timerMessageInput ? timerMessageInput.value.trim() : "";
+            const timerTotal = h * 3600 + m * 60 + s;
+
             if (timerTotal <= 0) {
                 timerLiveCountdown.textContent = "00:00:00";
                 return;
             }
+
+            activeTimer = {
+                targetMs: Date.now() + (timerTotal * 1000),
+                message: userMsg
+            };
+
             showTimerCountdown();
-            timerRunning = true;
-            timerLiveCountdown.textContent = formatTimer(timerLeft);
+            timerLiveCountdown.textContent = formatDuration(timerTotal);
+            refreshCountdownViews();
+
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
+
             timerWidgetInterval = setInterval(async function() {
-                timerLeft--;
+                if (!activeTimer) {
+                    clearInterval(timerWidgetInterval);
+                    return;
+                }
+
+                const timerLeft = Math.max(0, Math.ceil((activeTimer.targetMs - Date.now()) / 1000));
+
                 if (timerLeft <= 0) {
                     timerLiveCountdown.textContent = "00:00:00";
                     clearInterval(timerWidgetInterval);
-                    timerRunning = false;
-                    // Send motivational message to Matrix room
-                    let botMsg = userMsg || getRandomMotivation();
+                    const botMsg = activeTimer.message || getRandomMotivation();
+                    activeTimer = null;
+                    showTimerInputs();
+                    refreshCountdownViews();
                     try {
-                        await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
+                        if (botMsg && isReady) {
+                            await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
+                        }
                     } catch (err) {
-                        // ignore
+                        // ignore dispatch failures for local UI flow
                     }
                 } else {
-                    timerLiveCountdown.textContent = formatTimer(timerLeft);
+                    timerLiveCountdown.textContent = formatDuration(timerLeft);
+                    renderUnifiedUpcoming();
                 }
             }, 1000);
         });
+
         resetTimerBtn.addEventListener('click', function() {
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
-            timerRunning = false;
+            activeTimer = null;
             showTimerInputs();
+            refreshCountdownViews();
         });
-        // On load, show inputs
+
         showTimerInputs();
     }
 
-    function formatTimer(sec) {
-        const h = String(Math.floor(sec / 3600)).padStart(2, '0');
-        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-        const s = String(sec % 60).padStart(2, '0');
-        return `${h}:${m}:${s}`;
+    if (calendarForm) {
+        calendarForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const selectedDate = document.getElementById('calendarSelectedDate').value;
+            const calendarTime = document.getElementById('calendarTime').value;
+            const calendarMessage = document.getElementById('calendarMessage').value.trim();
+
+            if (!selectedDate) {
+                calendarStatus.textContent = 'Select date';
+                calendarStatus.className = 'status-message show error';
+                return;
+            }
+
+            if (!calendarTime || !calendarMessage) {
+                calendarStatus.textContent = 'Set time and message';
+                calendarStatus.className = 'status-message show error';
+                return;
+            }
+
+            const targetDate = new Date(`${selectedDate}T${calendarTime}`);
+            if (Number.isNaN(targetDate.getTime()) || targetDate.getTime() <= Date.now()) {
+                calendarStatus.textContent = 'Pick a future time';
+                calendarStatus.className = 'status-message show error';
+                return;
+            }
+
+            const dateTime = `${selectedDate} ${calendarTime}`;
+
+            try {
+                if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = true;
+                calendarStatus.textContent = 'Sending...';
+                calendarStatus.className = 'status-message show info';
+
+                await sendReminderAtDateTime(dateTime, calendarMessage);
+
+                calendarReminders.push({
+                    id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    targetMs: targetDate.getTime(),
+                    message: calendarMessage
+                });
+
+                calendarReminders.sort((a, b) => a.targetMs - b.targetMs);
+                refreshCountdownViews();
+
+                calendarStatus.textContent = 'Reminder set';
+                calendarStatus.className = 'status-message show success';
+
+                calendarForm.reset();
+                document.getElementById('calendarSelectedDate').value = '';
+            } catch (err) {
+                calendarStatus.textContent = 'Error: ' + err.message;
+                calendarStatus.className = 'status-message show error';
+            } finally {
+                if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = false;
+            }
+        });
     }
 });
 
@@ -632,43 +684,6 @@ function debugLogReminderCommand(command) {
     console.log('[DEBUG] Sending reminder command:', command);
     console.log('[DEBUG] roomId:', roomId, 'homeserverUrl:', homeserverUrl, 'userId:', userId);
 }
-
-// --- Calendar Reminder Integration ---
-document.addEventListener('DOMContentLoaded', function() {
-    const calendarForm = document.getElementById('calendarReminderForm');
-    if (!calendarForm) return;
-    calendarForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const selectedDate = document.getElementById('calendarSelectedDate').value;
-        const calendarTime = document.getElementById('calendarTime').value;
-        const calendarMessage = document.getElementById('calendarMessage').value.trim();
-        const calendarStatus = document.getElementById('calendarStatusMessage');
-        if (!selectedDate) {
-            calendarStatus.textContent = 'Please select a date.';
-            calendarStatus.className = 'status-message show error';
-            return;
-        }
-        if (!calendarTime || !calendarMessage) {
-            calendarStatus.textContent = 'Please enter time and message.';
-            calendarStatus.className = 'status-message show error';
-            return;
-        }
-        // Format: YYYY-MM-DD HH:MM
-        const dateTime = `${selectedDate} ${calendarTime}`;
-        try {
-            calendarStatus.textContent = 'Sending reminder...';
-            calendarStatus.className = 'status-message show info';
-            await sendReminderAtDateTime(dateTime, calendarMessage);
-            calendarStatus.textContent = 'Reminder set!';
-            calendarStatus.className = 'status-message show success';
-        } catch (err) {
-            calendarStatus.textContent = 'Error: ' + err.message;
-            calendarStatus.className = 'status-message show error';
-        }
-        calendarForm.reset();
-        document.getElementById('calendarSelectedDate').value = '';
-    });
-});
 
 // --- Listen for bot responses to reminders ---
 document.addEventListener('DOMContentLoaded', function() {
