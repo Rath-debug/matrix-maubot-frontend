@@ -313,6 +313,186 @@
             overflow: auto;
         }
 
+        .calendar-popup-item {
+            list-style: none;
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border: 1px solid #e6e6ef;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff 0%, #fafafe 100%);
+        }
+
+        .calendar-popup-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .calendar-popup-item-message {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #222;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .calendar-popup-item-badge {
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #f5576c;
+            background: #fff1f4;
+            border: 1px solid #ffd5de;
+            border-radius: 999px;
+            padding: 3px 8px;
+        }
+
+        .calendar-popup-item-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: #666;
+        }
+
+        .calendar-popup-item-countdown {
+            font-family: monospace;
+            color: #f5576c;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .calendar-card-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .calendar-monthbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .calendar-month-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid #e7e7ef;
+            background: #fff;
+            color: #f5576c;
+            margin: 0;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .calendar-month-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(245, 87, 108, 0.12);
+        }
+
+        .calendar-month-label {
+            flex: 1;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #222;
+        }
+
+        .calendar-grid {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px;
+            margin-bottom: 6px;
+        }
+
+        .calendar-grid th {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #7a7a95;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0;
+        }
+
+        .calendar-day-cell {
+            padding: 0;
+            position: relative;
+        }
+
+        .calendar-day-btn {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border: 1px solid #ececf4;
+            background: #f7f7fb;
+            color: #2b2b32;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            outline: none;
+            position: relative;
+            margin: 0;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .calendar-day-btn:hover {
+            transform: translateY(-1px);
+            border-color: #ffc3d0;
+            background: #fff7f9;
+        }
+
+        .calendar-day-btn.selected,
+        .calendar-day-btn.is-selected {
+            background: linear-gradient(135deg, #ff4d6d 0%, #ff6b86 100%);
+            color: #fff;
+            border-color: #ff4d6d;
+            box-shadow: 0 10px 18px rgba(255, 77, 109, 0.18);
+        }
+
+        .calendar-selected-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: #fff7f9;
+            border: 1px solid #ffd5de;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            color: #5f5f70;
+        }
+
+        .calendar-selected-value {
+            font-weight: 700;
+            color: #f5576c;
+        }
+
+        .calendar-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 10px;
+        }
+
+        .calendar-form-actions button {
+            width: 100%;
+        }
+
+        .calendar-hint {
+            font-size: 0.8rem;
+            color: #8b8b9b;
+            margin-top: -6px;
+        }
+
         .status-indicator.connected {
             background-color: #28a745;
         }
@@ -344,6 +524,17 @@
             button {
                 padding: 12px;
                 font-size: 0.9rem;
+            }
+
+            .calendar-form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-popup {
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+                width: auto;
             }
         }
     </style>
@@ -426,35 +617,40 @@
 
                     <!-- SCHEDULED REMINDER WIDGET (Calendar Style) -->
                     <div class="widget-container">
-            <div class="widget-header">
-                <h2>Calendar Reminder</h2>
-                <p>Pick a date, set a time and message</p>
-            </div>
-            <div id="calendarReminder">
-                <div id="calendarNav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <button type="button" id="prevMonth" style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#f5576c;">&#8592;</button>
-                    <span id="calendarMonthLabel" style="font-weight:600;font-size:1.1em;color:#333;"></span>
-                    <button type="button" id="nextMonth" style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#f5576c;">&#8594;</button>
-                </div>
-                <table id="calendarTable" style="width:100%;border-collapse:collapse;margin-bottom:18px;"></table>
-                <form id="calendarReminderForm">
-                    <div class="form-group">
-                        <label for="calendarSelectedDate">Date:</label>
-                        <input type="text" id="calendarSelectedDate" name="calendarSelectedDate" readonly style="background:#f5f6fa;cursor:not-allowed;" required />
-                    </div>
-                    <div class="form-group" style="display:flex;gap:10px;">
-                        <div style="flex:1;">
-                            <label for="calendarTime">Time:</label>
-                            <input type="time" id="calendarTime" name="calendarTime" required style="width:100%;" />
+                        <div class="widget-header">
+                            <h2>Calendar Reminder</h2>
+                            <p>Pick a date and open a live countdown</p>
                         </div>
-                        <div style="flex:2;">
-                            <label for="calendarMessage">Message:</label>
-                            <input type="text" id="calendarMessage" name="calendarMessage" placeholder="e.g., Meeting, break, call..." maxlength="120" required />
+                        <div id="calendarReminder" class="calendar-card-shell">
+                            <div id="calendarNav" class="calendar-monthbar">
+                                <button type="button" id="prevMonth" class="calendar-month-button">&#8592;</button>
+                                <span id="calendarMonthLabel" class="calendar-month-label"></span>
+                                <button type="button" id="nextMonth" class="calendar-month-button">&#8594;</button>
+                            </div>
+                            <table id="calendarTable" class="calendar-grid"></table>
+                            <form id="calendarReminderForm">
+                                <div class="calendar-selected-strip">
+                                    <span>Selected date</span>
+                                    <span id="calendarSelectedDateValue" class="calendar-selected-value">None</span>
+                                </div>
+                                <input type="hidden" id="calendarSelectedDate" name="calendarSelectedDate" required />
+                                <div class="form-group calendar-form-row" style="margin-top:12px;">
+                                    <div>
+                                        <label for="calendarTime">Time</label>
+                                        <input type="time" id="calendarTime" name="calendarTime" required style="width:100%;" />
+                                    </div>
+                                    <div>
+                                        <label for="calendarMessage">Message</label>
+                                        <input type="text" id="calendarMessage" name="calendarMessage" placeholder="Meeting, break, call" maxlength="120" required />
+                                    </div>
+                                </div>
+                                <div class="calendar-hint">Submit to open the calendar countdown popup.</div>
+                                <div class="calendar-form-actions">
+                                    <button type="submit" id="calendarSetReminderBtn">Set Reminder</button>
+                                </div>
+                            </form>
+                            <div id="calendarStatusMessage" class="status-message"></div>
                         </div>
-                    </div>
-                    <button type="submit" id="calendarSetReminderBtn">Set Reminder</button>
-                </form>
-                <div id="calendarStatusMessage" class="status-message"></div>
                     </div>
                 </div>
             </div>
@@ -464,7 +660,7 @@
 
     <div id="calendarCountdownPopup" class="calendar-popup" aria-live="polite">
         <div class="calendar-popup-header">
-            <span class="calendar-popup-title">Calendar Countdowns</span>
+            <span class="calendar-popup-title">Calendar Countdown</span>
             <button type="button" id="calendarPopupCloseBtn" class="calendar-popup-close">×</button>
         </div>
         <ul id="calendarPopupList" class="calendar-popup-list"></ul>

@@ -289,6 +289,7 @@ let activeTimer = null;
 let timerWidgetInterval = null;
 let calendarCountdownInterval = null;
 let isCalendarPopupDismissed = false;
+const CALENDAR_REMINDERS_STORAGE_KEY = 'matrixCalendarReminders';
 
 function formatDateTime(dt) {
     const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
@@ -301,6 +302,38 @@ function formatDuration(totalSeconds) {
     const m = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, '0');
     const s = String(safeSeconds % 60).padStart(2, '0');
     return `${h}:${m}:${s}`;
+}
+
+function saveCalendarReminders() {
+    try {
+        localStorage.setItem(CALENDAR_REMINDERS_STORAGE_KEY, JSON.stringify(calendarReminders));
+    } catch (error) {
+        console.warn('[Calendar] Failed to persist reminders:', error);
+    }
+}
+
+function loadCalendarReminders() {
+    try {
+        const raw = localStorage.getItem(CALENDAR_REMINDERS_STORAGE_KEY);
+        if (!raw) return;
+
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+
+        calendarReminders = parsed
+            .filter((item) => item && typeof item.targetMs === 'number' && item.message)
+            .map((item) => ({
+                id: item.id || `cal-${item.targetMs}`,
+                targetMs: item.targetMs,
+                message: item.message
+            }))
+            .filter((item) => item.targetMs > Date.now());
+
+        saveCalendarReminders();
+    } catch (error) {
+        console.warn('[Calendar] Failed to load reminders:', error);
+        calendarReminders = [];
+    }
 }
 
 function showCalendarCountdownPopup() {
@@ -328,10 +361,15 @@ function renderCalendarReminderCountdowns() {
         .sort((a, b) => a.targetMs - b.targetMs)
         .map((item) => {
             const remaining = Math.max(0, Math.ceil((item.targetMs - now) / 1000));
-            return `<li style="list-style:none;margin-bottom:8px;padding:10px;border:1px solid #e6e6ef;border-radius:8px;background:#fafafe;">
-                <div style="font-weight:600;color:#333;">${item.message}</div>
-                <div style="font-size:0.85rem;color:#666;">${formatDateTime(new Date(item.targetMs))}</div>
-                <div style="font-family:monospace;font-size:1rem;color:#f5576c;">${formatDuration(remaining)}</div>
+            return `<li class="calendar-popup-item">
+                <div class="calendar-popup-item-top">
+                    <div class="calendar-popup-item-message">${item.message}</div>
+                    <div class="calendar-popup-item-badge">Active</div>
+                </div>
+                <div class="calendar-popup-item-meta">
+                    <span>${formatDateTime(new Date(item.targetMs))}</span>
+                    <span class="calendar-popup-item-countdown">${formatDuration(remaining)}</span>
+                </div>
             </li>`;
         })
         .join('');
@@ -364,6 +402,10 @@ function startCalendarCountdownTicker() {
                     .catch(() => {});
             }
         });
+
+        if (dueItems.length > 0) {
+            saveCalendarReminders();
+        }
 
         refreshCalendarCountdownView();
     }, 1000);
@@ -447,6 +489,7 @@ async function reminderTimer(params) {
  */
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
+    loadCalendarReminders();
     startCalendarCountdownTicker();
     refreshCalendarCountdownView();
 
@@ -602,6 +645,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 calendarReminders.sort((a, b) => a.targetMs - b.targetMs);
+                saveCalendarReminders();
                 isCalendarPopupDismissed = false;
                 refreshCalendarCountdownView();
 
@@ -692,6 +736,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevMonthBtn = document.getElementById('prevMonth');
     const nextMonthBtn = document.getElementById('nextMonth');
     const calendarSelectedDate = document.getElementById('calendarSelectedDate');
+    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
+
+    function syncSelectedDateLabel() {
+        if (calendarSelectedDateValue) {
+            calendarSelectedDateValue.textContent = selectedDate || 'None';
+        }
+    }
 
     function renderCalendar(month, year) {
         // Month label
@@ -710,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '<thead><tr>';
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         for (let d = 0; d < 7; d++) {
-            html += `<th style="padding:6px 0;color:#f5576c;font-weight:600;">${dayNames[d]}</th>`;
+            html += `<th>${dayNames[d]}</th>`;
         }
         html += '</tr></thead><tbody>';
 
@@ -719,15 +770,15 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<tr>';
             for (let j = 0; j < 7; j++) {
                 if (i === 0 && j < firstDay) {
-                    html += '<td></td>';
+                    html += '<td class="calendar-day-cell"></td>';
                 } else if (date > daysInMonth) {
-                    html += '<td></td>';
+                    html += '<td class="calendar-day-cell"></td>';
                 } else {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
-                    let classes = 'cal-day';
-                    if (selectedDate === dateStr) classes += ' selected';
-                    html += `<td style="padding:0;position:relative;">
-                        <button type="button" class="cal-day-btn ${classes}" data-date="${dateStr}" style="width:36px;height:36px;border:none;background:${selectedDate===dateStr?'#ff4d6d':'#f5f6fa'};color:${selectedDate===dateStr?'#fff':'#333'};border-radius:50%;font-weight:600;cursor:pointer;transition:background 0.2s;outline:none;position:relative;">
+                    let classes = 'calendar-day-btn';
+                    if (selectedDate === dateStr) classes += ' is-selected';
+                    html += `<td class="calendar-day-cell">
+                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${dateStr}">
                             ${date}
                         </button>
                     </td>`;
@@ -740,13 +791,16 @@ document.addEventListener('DOMContentLoaded', function() {
         calendarTable.innerHTML = html;
 
         // Add click listeners to date buttons
-        document.querySelectorAll('.cal-day-btn').forEach(btn => {
+        document.querySelectorAll('.calendar-day-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 selectedDate = btn.getAttribute('data-date');
                 calendarSelectedDate.value = selectedDate;
+                syncSelectedDateLabel();
                 renderCalendar(currentMonth, currentYear);
             });
         });
+
+        syncSelectedDateLabel();
     }
 
     if (prevMonthBtn && nextMonthBtn) {
@@ -770,4 +824,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize calendar
     renderCalendar(currentMonth, currentYear);
+    syncSelectedDateLabel();
 });
