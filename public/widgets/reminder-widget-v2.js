@@ -524,6 +524,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let timerWidgetInterval = null;
     const timerInputGroup = document.getElementById("timerInputGroup");
     const timerSetBtnGroup = document.getElementById("timerSetBtnGroup");
+    const timerCountdownPanel = document.getElementById("timerCountdownPanel");
     const timerCountdownGroup = document.getElementById("timerCountdownGroup");
     const timerLiveCountdown = document.getElementById("timerLiveCountdown");
     const setTimerBtn = document.getElementById("setTimerBtn");
@@ -535,11 +536,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
         if (timerSetBtnGroup) timerSetBtnGroup.style.display = '';
+        if (timerCountdownPanel) timerCountdownPanel.style.display = 'none';
         if (timerCountdownGroup) timerCountdownGroup.style.display = 'none';
     }
     function showTimerCountdown() {
         if (timerInputGroup) timerInputGroup.style.display = 'none';
         if (timerSetBtnGroup) timerSetBtnGroup.style.display = 'none';
+        if (timerCountdownPanel) timerCountdownPanel.style.display = '';
         if (timerCountdownGroup) timerCountdownGroup.style.display = '';
     }
 

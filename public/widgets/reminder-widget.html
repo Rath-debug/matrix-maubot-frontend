@@ -210,6 +210,60 @@
             vertical-align: middle;
         }
 
+        .widget-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .widget-section-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            letter-spacing: 0.01em;
+        }
+
+        .stepper-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .stepper-btn {
+            background: #f5f6fa;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            width: 32px;
+            height: 28px;
+            font-size: 1.1em;
+            color: #f5576c;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .stepper-btn:hover {
+            background: #f093fb22;
+        }
+
+        .stepper-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            width: 32px;
+            text-align: center;
+            margin: 2px 0;
+            color: #333;
+        }
+
+        #timerLiveCountdown {
+            font-size: 2em;
+            color: #f5576c;
+            font-family: monospace;
+            letter-spacing: 0.04em;
+        }
+
         .status-indicator.connected {
             background-color: #28a745;
         }
@@ -261,124 +315,68 @@
                 </div>
             </aside>
             <div style="flex:1;min-width:0;">
-        <!-- TIMER WIDGET -->
-        <div class="widget-container" style="margin-bottom: 32px;">
-        <div class="widget-header">
-            <h2>Timer</h2>
-            <p>Set a countdown timer</p>
-        </div>
-        <form id="timerForm">
-            <div class="form-group time-input-group" id="timerInputGroup">
-                <div style="flex:1; text-align:center;">
-                    <label for="timerHours">Hours</label>
-                    <div class="stepper-group">
-                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="1">▲</button>
-                        <div id="timerHoursDisplay" class="stepper-value">0</div>
-                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="-1">▼</button>
+                <div class="widget-grid">
+                    <!-- TIMER SETUP WIDGET -->
+                    <div class="widget-container">
+                        <div class="widget-header">
+                            <h2>Timer Setup</h2>
+                            <p>Configure your countdown duration</p>
+                        </div>
+                        <form id="timerForm">
+                            <div class="form-group time-input-group" id="timerInputGroup">
+                                <div style="flex:1; text-align:center;">
+                                    <label for="timerHours">Hours</label>
+                                    <div class="stepper-group">
+                                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="1">▲</button>
+                                        <div id="timerHoursDisplay" class="stepper-value">0</div>
+                                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="-1">▼</button>
+                                    </div>
+                                </div>
+                                <div style="flex:1; text-align:center;">
+                                    <label for="timerMinutes">Minutes</label>
+                                    <div class="stepper-group">
+                                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="1">▲</button>
+                                        <div id="timerMinutesDisplay" class="stepper-value">0</div>
+                                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="-1">▼</button>
+                                    </div>
+                                </div>
+                                <div style="flex:1; text-align:center;">
+                                    <label for="timerSeconds">Seconds</label>
+                                    <div class="stepper-group">
+                                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="1">▲</button>
+                                        <div id="timerSecondsDisplay" class="stepper-value">0</div>
+                                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="-1">▼</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" id="timerHours" value="0" />
+                            <input type="hidden" id="timerMinutes" value="0" />
+                            <input type="hidden" id="timerSeconds" value="0" />
+                            <div class="form-group">
+                                <label for="timerMessage">Message:</label>
+                                <input type="text" id="timerMessage" name="timerMessage" placeholder="e.g., Great job! Take a break ☕" maxlength="120" style="width:100%;" />
+                            </div>
+                            <div class="form-group" id="timerSetBtnGroup">
+                                <button type="button" id="setTimerBtn" style="width:100%;background:#f5576c;color:#fff;">Set Timer</button>
+                            </div>
+                        </form>
+                        <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
                     </div>
-                </div>
-                <div style="flex:1; text-align:center;">
-                    <label for="timerMinutes">Minutes</label>
-                    <div class="stepper-group">
-                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="1">▲</button>
-                        <div id="timerMinutesDisplay" class="stepper-value">0</div>
-                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="-1">▼</button>
-                    </div>
-                </div>
-                <div style="flex:1; text-align:center;">
-                    <label for="timerSeconds">Seconds</label>
-                    <div class="stepper-group">
-                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="1">▲</button>
-                        <div id="timerSecondsDisplay" class="stepper-value">0</div>
-                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="-1">▼</button>
-                    </div>
-                </div>
-            </div>
-            <!-- Hidden real inputs for form compatibility -->
-            <input type="hidden" id="timerHours" value="0" />
-            <input type="hidden" id="timerMinutes" value="0" />
-            <input type="hidden" id="timerSeconds" value="0" />
-                <style>
-                .stepper-group {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 2px;
-                }
-                .stepper-btn {
-                    background: #f5f6fa;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
-                    width: 32px;
-                    height: 28px;
-                    font-size: 1.1em;
-                    color: #f5576c;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                    user-select: none;
-                }
-                .stepper-btn:hover {
-                    background: #f093fb22;
-                }
-                .stepper-value {
-                    font-size: 1.3em;
-                    font-weight: bold;
-                    width: 32px;
-                    text-align: center;
-                    margin: 2px 0;
-                    color: #333;
-                }
-                </style>
-                <script>
-                // Timer stepper logic
-                document.addEventListener('DOMContentLoaded', function() {
-                    function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
-                    const limits = { timerHours: [0, 23], timerMinutes: [0, 59], timerSeconds: [0, 59] };
-                    const displays = {
-                        timerHours: document.getElementById('timerHoursDisplay'),
-                        timerMinutes: document.getElementById('timerMinutesDisplay'),
-                        timerSeconds: document.getElementById('timerSecondsDisplay')
-                    };
-                    const inputs = {
-                        timerHours: document.getElementById('timerHours'),
-                        timerMinutes: document.getElementById('timerMinutes'),
-                        timerSeconds: document.getElementById('timerSeconds')
-                    };
-                    function updateDisplay(target) {
-                        displays[target].textContent = inputs[target].value;
-                    }
-                    document.querySelectorAll('.stepper-btn').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const target = btn.getAttribute('data-target');
-                            const step = parseInt(btn.getAttribute('data-step'), 10);
-                            let val = parseInt(inputs[target].value, 10) || 0;
-                            val = clamp(val + step, limits[target][0], limits[target][1]);
-                            inputs[target].value = val;
-                            updateDisplay(target);
-                        });
-                    });
-                    // Initialize displays
-                    Object.keys(displays).forEach(updateDisplay);
-                });
-                </script>
-            <div class="form-group" id="timerSetBtnGroup">
-                <button type="button" id="setTimerBtn" style="width:100%;background:#f5576c;color:#fff;">Set Timer</button>
-            </div>
-            <div class="form-group" id="timerCountdownGroup" style="display:none;text-align:center;">
-                <div id="timerLiveCountdown" style="font-size:2em;color:#f5576c;font-family:monospace;">00:00:00</div>
-                <button type="button" id="resetTimerBtn" style="margin-top:10px;width:100px;background:#eee;color:#f5576c;">Reset</button>
-            </div>
-            <div class="form-group">
-                <label for="timerMessage">Message:</label>
-                <input type="text" id="timerMessage" name="timerMessage" placeholder="e.g., Great job! Take a break ☕" maxlength="120" style="width:100%;" />
-            </div>
-            <!-- Start button removed, replaced by Set Timer above. Countdown display moved above. -->
-        </form>
-        <div style="text-align:center; color:#888; font-size:0.95em; margin-top:10px;">Try adding a message to motivate yourself when the timer ends!</div>
-    </div>
 
-        <!-- SCHEDULED REMINDER WIDGET (Calendar Style) -->
-        <div class="widget-container">
+                    <!-- COUNTDOWN WIDGET -->
+                    <div class="widget-container" id="timerCountdownPanel" style="display:none;">
+                        <div class="widget-header">
+                            <h2>Countdown</h2>
+                            <p>Live timer until completion</p>
+                        </div>
+                        <div class="form-group" id="timerCountdownGroup" style="display:none;text-align:center;">
+                            <div id="timerLiveCountdown">00:00:00</div>
+                            <button type="button" id="resetTimerBtn" style="margin-top:10px;width:100px;background:#eee;color:#f5576c;">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- SCHEDULED REMINDER WIDGET (Calendar Style) -->
+                    <div class="widget-container">
             <div class="widget-header">
                 <h2>Calendar Reminder</h2>
                 <p>Pick a date, set a time and message</p>
@@ -412,11 +410,45 @@
                     <label style="font-weight:600;color:#333;">Upcoming Reminders</label>
                     <ul id="calendarReminderList" style="list-style:none;padding:0;margin:10px 0 0 0;"></ul>
                 </div>
+                    </div>
+                </div>
             </div>
-        </div>
         <!-- Calendar logic is now handled in reminder-widget-v2.js -->
             </div>
         </div>
+    <script>
+    // Timer stepper logic
+    document.addEventListener('DOMContentLoaded', function() {
+        function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+        const limits = { timerHours: [0, 23], timerMinutes: [0, 59], timerSeconds: [0, 59] };
+        const displays = {
+            timerHours: document.getElementById('timerHoursDisplay'),
+            timerMinutes: document.getElementById('timerMinutesDisplay'),
+            timerSeconds: document.getElementById('timerSecondsDisplay')
+        };
+        const inputs = {
+            timerHours: document.getElementById('timerHours'),
+            timerMinutes: document.getElementById('timerMinutes'),
+            timerSeconds: document.getElementById('timerSeconds')
+        };
+        function updateDisplay(target) {
+            if (displays[target] && inputs[target]) {
+                displays[target].textContent = inputs[target].value;
+            }
+        }
+        document.querySelectorAll('.stepper-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = btn.getAttribute('data-target');
+                const step = parseInt(btn.getAttribute('data-step'), 10);
+                let val = parseInt(inputs[target].value, 10) || 0;
+                val = clamp(val + step, limits[target][0], limits[target][1]);
+                inputs[target].value = val;
+                updateDisplay(target);
+            });
+        });
+        Object.keys(displays).forEach(updateDisplay);
+    });
+    </script>
         <style>
                 .main-layout {
                     display: flex;
