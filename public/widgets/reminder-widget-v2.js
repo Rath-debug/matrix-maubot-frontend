@@ -288,6 +288,7 @@ let calendarReminders = [];
 let activeTimer = null;
 let timerWidgetInterval = null;
 let calendarCountdownInterval = null;
+let isCalendarPopupDismissed = false;
 
 function formatDateTime(dt) {
     const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
@@ -302,17 +303,28 @@ function formatDuration(totalSeconds) {
     return `${h}:${m}:${s}`;
 }
 
+function showCalendarCountdownPopup() {
+    const popup = document.getElementById('calendarCountdownPopup');
+    if (popup) popup.style.display = 'block';
+}
+
+function hideCalendarCountdownPopup() {
+    const popup = document.getElementById('calendarCountdownPopup');
+    if (popup) popup.style.display = 'none';
+}
+
 function renderCalendarReminderCountdowns() {
-    const calendarReminderList = document.getElementById('calendarReminderList');
-    if (!calendarReminderList) return;
+    const calendarPopupList = document.getElementById('calendarPopupList');
+    if (!calendarPopupList) return;
 
     if (calendarReminders.length === 0) {
-        calendarReminderList.innerHTML = '<li style="color:#888;">No active reminders</li>';
+        calendarPopupList.innerHTML = '';
+        hideCalendarCountdownPopup();
         return;
     }
 
     const now = Date.now();
-    calendarReminderList.innerHTML = calendarReminders
+    calendarPopupList.innerHTML = calendarReminders
         .sort((a, b) => a.targetMs - b.targetMs)
         .map((item) => {
             const remaining = Math.max(0, Math.ceil((item.targetMs - now) / 1000));
@@ -323,54 +335,14 @@ function renderCalendarReminderCountdowns() {
             </li>`;
         })
         .join('');
+
+    if (!isCalendarPopupDismissed) {
+        showCalendarCountdownPopup();
+    }
 }
 
-function renderUnifiedUpcoming() {
-    const unifiedUpcomingList = document.getElementById('unifiedUpcomingList');
-    if (!unifiedUpcomingList) return;
-
-    const now = Date.now();
-    const items = [];
-
-    if (activeTimer && activeTimer.targetMs > now) {
-        items.push({
-            kind: 'Timer',
-            message: activeTimer.message || 'Timer',
-            targetMs: activeTimer.targetMs
-        });
-    }
-
-    calendarReminders.forEach((item) => {
-        if (item.targetMs > now) {
-            items.push({
-                kind: 'Calendar',
-                message: item.message,
-                targetMs: item.targetMs
-            });
-        }
-    });
-
-    items.sort((a, b) => a.targetMs - b.targetMs);
-
-    if (items.length === 0) {
-        unifiedUpcomingList.innerHTML = '<li style="color:#888;">No active countdowns</li>';
-        return;
-    }
-
-    unifiedUpcomingList.innerHTML = items
-        .map((item) => {
-            const remaining = Math.max(0, Math.ceil((item.targetMs - now) / 1000));
-            return `<li style="list-style:none;margin-bottom:8px;padding:8px 10px;border:1px solid #ececf4;border-radius:8px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:center;">
-                <span style="color:#333;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.kind}: ${item.message}</span>
-                <span style="font-family:monospace;color:#f5576c;font-size:0.95rem;">${formatDuration(remaining)}</span>
-            </li>`;
-        })
-        .join('');
-}
-
-function refreshCountdownViews() {
+function refreshCalendarCountdownView() {
     renderCalendarReminderCountdowns();
-    renderUnifiedUpcoming();
 }
 
 function startCalendarCountdownTicker() {
@@ -378,7 +350,7 @@ function startCalendarCountdownTicker() {
 
     calendarCountdownInterval = setInterval(() => {
         if (calendarReminders.length === 0) {
-            refreshCountdownViews();
+            refreshCalendarCountdownView();
             return;
         }
 
@@ -393,7 +365,7 @@ function startCalendarCountdownTicker() {
             }
         });
 
-        refreshCountdownViews();
+        refreshCalendarCountdownView();
     }, 1000);
 }
 
@@ -476,7 +448,7 @@ async function reminderTimer(params) {
 document.addEventListener("DOMContentLoaded", () => {
     initWidget();
     startCalendarCountdownTicker();
-    refreshCountdownViews();
+    refreshCalendarCountdownView();
 
     // Add event listeners for command buttons
     const cmdBtns = document.querySelectorAll(".cmd-btn");
@@ -511,6 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarForm = document.getElementById('calendarReminderForm');
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
+    const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
@@ -548,7 +521,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             showTimerCountdown();
             timerLiveCountdown.textContent = formatDuration(timerTotal);
-            refreshCountdownViews();
 
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
 
@@ -566,7 +538,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const botMsg = activeTimer.message || getRandomMotivation();
                     activeTimer = null;
                     showTimerInputs();
-                    refreshCountdownViews();
                     try {
                         if (botMsg && isReady) {
                             await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
@@ -576,7 +547,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 } else {
                     timerLiveCountdown.textContent = formatDuration(timerLeft);
-                    renderUnifiedUpcoming();
                 }
             }, 1000);
         });
@@ -585,7 +555,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
             activeTimer = null;
             showTimerInputs();
-            refreshCountdownViews();
         });
 
         showTimerInputs();
@@ -633,7 +602,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 calendarReminders.sort((a, b) => a.targetMs - b.targetMs);
-                refreshCountdownViews();
+                isCalendarPopupDismissed = false;
+                refreshCalendarCountdownView();
 
                 calendarStatus.textContent = 'Reminder set';
                 calendarStatus.className = 'status-message show success';
@@ -646,6 +616,13 @@ document.addEventListener("DOMContentLoaded", () => {
             } finally {
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = false;
             }
+        });
+    }
+
+    if (calendarPopupCloseBtn) {
+        calendarPopupCloseBtn.addEventListener('click', function() {
+            isCalendarPopupDismissed = true;
+            hideCalendarCountdownPopup();
         });
     }
 });

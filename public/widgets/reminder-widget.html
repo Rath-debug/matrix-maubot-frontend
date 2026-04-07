@@ -264,6 +264,55 @@
             letter-spacing: 0.04em;
         }
 
+        .calendar-popup {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            width: min(360px, calc(100vw - 24px));
+            background: #ffffff;
+            border: 1px solid #e6e6ef;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+            padding: 12px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .calendar-popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .calendar-popup-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .calendar-popup-close {
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            margin: 0;
+            padding: 0;
+            color: #666;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .calendar-popup-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 260px;
+            overflow: auto;
+        }
+
         .status-indicator.connected {
             background-color: #28a745;
         }
@@ -406,24 +455,21 @@
                     <button type="submit" id="calendarSetReminderBtn">Set Reminder</button>
                 </form>
                 <div id="calendarStatusMessage" class="status-message"></div>
-                <div id="calendarUpcoming" style="margin-top:24px;">
-                    <label style="font-weight:600;color:#333;">Calendar Countdowns</label>
-                    <ul id="calendarReminderList" style="list-style:none;padding:0;margin:10px 0 0 0;"></ul>
-                </div>
-                    </div>
-
-                    <div class="widget-container">
-                        <div class="widget-header">
-                            <h2>Unified Upcoming</h2>
-                            <p>Timer + calendar countdowns</p>
-                        </div>
-                        <ul id="unifiedUpcomingList" style="list-style:none;padding:0;margin:0;"></ul>
                     </div>
                 </div>
             </div>
         <!-- Calendar logic is now handled in reminder-widget-v2.js -->
             </div>
         </div>
+
+    <div id="calendarCountdownPopup" class="calendar-popup" aria-live="polite">
+        <div class="calendar-popup-header">
+            <span class="calendar-popup-title">Calendar Countdowns</span>
+            <button type="button" id="calendarPopupCloseBtn" class="calendar-popup-close">×</button>
+        </div>
+        <ul id="calendarPopupList" class="calendar-popup-list"></ul>
+    </div>
+
     <script>
     // Timer stepper logic
     document.addEventListener('DOMContentLoaded', function() {
