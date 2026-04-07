@@ -264,6 +264,55 @@
             letter-spacing: 0.04em;
         }
 
+        .timer-clock-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .timer-clock-face {
+            --progress: 0;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at center, #fff 67%, transparent 68%),
+                conic-gradient(#ff4d6d calc(var(--progress) * 1%), #f1f1f6 0);
+            border: 1px solid #f0dce3;
+            box-shadow: 0 12px 22px rgba(245, 87, 108, 0.12);
+        }
+
+        .timer-clock-center {
+            text-align: center;
+        }
+
+        #timerLiveCountdown {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #e74768;
+            font-family: var(--mono);
+            letter-spacing: 0.02em;
+        }
+
+        .timer-clock-label {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8a8aa0;
+            font-weight: 700;
+        }
+
+        #timerEndAt {
+            font-size: 0.85rem;
+            color: #76768f;
+        }
+
         .calendar-popup {
             position: fixed;
             right: 16px;
@@ -678,10 +727,18 @@
                     <div class="widget-container" id="timerCountdownPanel" style="display:none;">
                         <div class="widget-header">
                             <h2>Countdown</h2>
-                            <p>Live timer until completion</p>
+                            <p>Simple clock-style countdown</p>
                         </div>
                         <div class="form-group" id="timerCountdownGroup" style="display:none;text-align:center;">
-                            <div id="timerLiveCountdown">00:00:00</div>
+                            <div class="timer-clock-wrap">
+                                <div class="timer-clock-face" id="timerClockFace" style="--progress: 0;">
+                                    <div class="timer-clock-center">
+                                        <div id="timerLiveCountdown">00:00:00</div>
+                                        <div class="timer-clock-label">Remaining</div>
+                                    </div>
+                                </div>
+                                <div id="timerEndAt">Ends at --:--</div>
+                            </div>
                             <button type="button" id="resetTimerBtn" style="margin-top:10px;width:100px;background:#eee;color:#f5576c;">Reset</button>
                         </div>
                     </div>

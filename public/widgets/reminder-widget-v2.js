@@ -518,6 +518,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const timerCountdownPanel = document.getElementById("timerCountdownPanel");
     const timerCountdownGroup = document.getElementById("timerCountdownGroup");
     const timerLiveCountdown = document.getElementById("timerLiveCountdown");
+    const timerClockFace = document.getElementById("timerClockFace");
+    const timerEndAt = document.getElementById("timerEndAt");
     const setTimerBtn = document.getElementById("setTimerBtn");
     const resetTimerBtn = document.getElementById("resetTimerBtn");
     const timerMessageInput = document.getElementById("timerMessage");
@@ -620,6 +622,22 @@ document.addEventListener("DOMContentLoaded", () => {
         if (timerCountdownGroup) timerCountdownGroup.style.display = '';
     }
 
+    function setTimerProgress(percent) {
+        if (!timerClockFace) return;
+        const bounded = Math.max(0, Math.min(100, percent));
+        timerClockFace.style.setProperty('--progress', String(bounded));
+    }
+
+    function setTimerEndLabel(targetMs) {
+        if (!timerEndAt) return;
+        if (!targetMs) {
+            timerEndAt.textContent = 'Ends at --:--';
+            return;
+        }
+        const endTime = new Date(targetMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        timerEndAt.textContent = `Ends at ${endTime}`;
+    }
+
     if (setTimerBtn && timerLiveCountdown && resetTimerBtn) {
         setTimerBtn.addEventListener('click', function() {
             const h = parseInt(document.getElementById("timerHours").value, 10) || 0;
@@ -635,11 +653,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
             activeTimer = {
                 targetMs: Date.now() + (timerTotal * 1000),
-                message: userMsg
+                message: userMsg,
+                totalSeconds: timerTotal
             };
 
             showTimerCountdown();
             timerLiveCountdown.textContent = formatDuration(timerTotal);
+            setTimerProgress(100);
+            setTimerEndLabel(activeTimer.targetMs);
 
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
 
@@ -653,10 +674,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (timerLeft <= 0) {
                     timerLiveCountdown.textContent = "00:00:00";
+                    setTimerProgress(0);
                     clearInterval(timerWidgetInterval);
                     const botMsg = activeTimer.message || getRandomMotivation();
                     activeTimer = null;
                     showTimerInputs();
+                    setTimerEndLabel(null);
                     try {
                         if (botMsg && isReady) {
                             await sendCommandToMatrix(`!remind for 0s ${botMsg}`);
@@ -666,6 +689,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 } else {
                     timerLiveCountdown.textContent = formatDuration(timerLeft);
+                    const percent = (timerLeft / activeTimer.totalSeconds) * 100;
+                    setTimerProgress(percent);
                 }
             }, 1000);
         });
@@ -674,9 +699,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (timerWidgetInterval) clearInterval(timerWidgetInterval);
             activeTimer = null;
             showTimerInputs();
+            setTimerProgress(0);
+            setTimerEndLabel(null);
         });
 
         showTimerInputs();
+        setTimerProgress(0);
+        setTimerEndLabel(null);
     }
 
     if (calendarForm) {
