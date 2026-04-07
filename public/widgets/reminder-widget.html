@@ -493,6 +493,77 @@
             margin-top: -6px;
         }
 
+        .calendar-time-feature {
+            background: linear-gradient(140deg, #fff7f9 0%, #fff 70%);
+            border: 1px solid #ffd8e2;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .calendar-time-feature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .calendar-time-feature-head label {
+            margin-bottom: 0;
+        }
+
+        .calendar-time-boost {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #f5576c;
+            background: #fff;
+            border: 1px solid #ffc8d6;
+            border-radius: 999px;
+            padding: 4px 8px;
+            white-space: nowrap;
+        }
+
+        .calendar-time-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .calendar-time-chip {
+            width: auto;
+            margin: 0;
+            padding: 6px 10px;
+            border: 1px solid #ffd0da;
+            border-radius: 999px;
+            background: #fff;
+            color: #e14f6f;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: none;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .calendar-time-chip:hover,
+        .calendar-time-chip.active {
+            transform: none;
+            background: #ff4d6d;
+            color: #fff;
+            border-color: #ff4d6d;
+            box-shadow: none;
+        }
+
+        .calendar-time-note {
+            margin-top: 8px;
+            font-size: 0.76rem;
+            color: #8b8b9b;
+            min-height: 16px;
+        }
+
         .status-indicator.connected {
             background-color: #28a745;
         }
@@ -635,9 +706,19 @@
                                 </div>
                                 <input type="hidden" id="calendarSelectedDate" name="calendarSelectedDate" required />
                                 <div class="form-group calendar-form-row" style="margin-top:12px;">
-                                    <div>
-                                        <label for="calendarTime">Time</label>
+                                    <div class="calendar-time-feature" id="calendarTimeFeature">
+                                        <div class="calendar-time-feature-head">
+                                            <label for="calendarTime">Launch Time</label>
+                                            <span id="calendarTimeBoost" class="calendar-time-boost">Prime Window</span>
+                                        </div>
                                         <input type="time" id="calendarTime" name="calendarTime" required style="width:100%;" />
+                                        <div class="calendar-time-presets">
+                                            <button type="button" class="calendar-time-chip" data-time-preset="09:00">Morning</button>
+                                            <button type="button" class="calendar-time-chip" data-time-preset="13:00">Noon</button>
+                                            <button type="button" class="calendar-time-chip" data-time-preset="17:00">Evening</button>
+                                            <button type="button" class="calendar-time-chip" data-time-preset="now+15">Now +15m</button>
+                                        </div>
+                                        <div id="calendarTimeNote" class="calendar-time-note">Choose a launch slot to maximize visibility.</div>
                                     </div>
                                     <div>
                                         <label for="calendarMessage">Message</label>
