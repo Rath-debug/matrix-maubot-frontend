@@ -37,210 +37,241 @@
             --radius:    16px;
             --mono:      'DM Mono', monospace;
             --sans:      'DM Sans', sans-serif;
-            --transition: 0.2s cubic-bezier(.4,0,.2,1);
         }
 
-        .timer-card, .widget-container, .reminder-card, .sidebar {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(10px);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-            padding: 28px 28px 22px 28px;
-            margin-bottom: 0;
-        }
+    .main-layout {
+                    display: flex;
+                    gap: 24px;
+                    align-items: flex-start;
+                    justify-content: center;
+                    margin: 0 auto 32px;
+                    max-width: 1240px;
+                }
 
-        .widget-container {
-            background: rgba(255, 255, 255, 0.96);
-            border-radius: 20px;
-            box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-            padding: 25px;
-            max-width: 420px;
-            margin: 0 auto;
-        }
+                .sidebar {
+                    min-width: 160px;
+                    max-width: 220px;
+                    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+                    padding: 18px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    position: sticky;
+                    top: 20px;
+                    background: rgba(255, 255, 255, 0.92);
+                    border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.7);
+                    z-index: 2;
+                    backdrop-filter: blur(18px);
+                }
 
-        .widget-header {
-            text-align: center;
-            margin-bottom: 22px;
-            border-bottom: 1px solid #e7eaf2;
-            padding-bottom: 16px;
-        }
+                .sidebar-header {
+                    text-align: left;
+                    margin-bottom: 10px;
+                }
 
-        .widget-header h2 {
-            font-size: 1.55rem;
-            color: #111827;
-            margin-bottom: 6px;
-            letter-spacing: -0.02em;
-        }
+                .sidebar-header h3 {
+                    font-size: 1.09em;
+                    font-weight: 700;
+                    color: #e74768;
+                    margin-bottom: 2px;
+                    letter-spacing: 0.01em;
+                }
 
-        .widget-header .icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
+                .sidebar-header p {
+                    font-size: 0.95em;
+                    color: #8a8a8a;
+                }
 
-        .widget-header p {
-            color: #6b7280;
-            font-size: 0.92rem;
-        }
+                .sidebar-commands {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
 
-        .form-group {
-            margin-bottom: 18px;
-        }
+                .sidebar-commands .cmd-btn {
+                    border: none;
+                    border-radius: 12px;
+                    background: #f7f7fb;
+                    color: #1a1a1a;
+                    font-size: 1em;
+                    padding: 9px 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 7px;
+                    cursor: pointer;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+                    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+                }
 
-        label {
-            display: block;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-        }
+                .sidebar-commands .cmd-btn:hover,
+                .sidebar-commands .cmd-btn:focus {
+                    background: linear-gradient(90deg, #ffb4c7 0%, #f5576c 100%);
+                    color: #fff;
+                    box-shadow: 0 2px 10px rgba(255, 77, 109, 0.13);
+                    outline: none;
+                }
 
-        .time-input-group {
-            display: flex;
-            gap: 10px;
-        }
+                .sidebar-commands .cmd-btn .icon {
+                    font-size: 1.1em;
+                    margin-right: 4px;
+                }
 
-        input[type="number"],
-        input[type="text"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px 13px;
-            border: 1.5px solid #d7dbe7;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-            background: #fff;
-            color: #111827;
-        }
+                .widget-container {
+                    background: rgba(255, 255, 255, 0.98);
+                    border-radius: 28px;
+                    box-shadow: 0 8px 36px 0 rgba(255, 77, 109, 0.11), 0 1.5px 8px 0 rgba(80, 80, 120, 0.04);
+                    padding: 34px 32px 32px;
+                    max-width: 900px;
+                    width: 100%;
+                    margin: 0 auto;
+                    position: relative;
+                    border: 1.5px solid #f6dbe3;
+                }
 
-        input[type="number"],
-        select {
-            width: auto;
-        }
+                .widget-header h2 {
+                    font-size: 2em;
+                    font-weight: 700;
+                    color: #e74768;
+                    letter-spacing: -0.03em;
+                    margin-bottom: 0.13em;
+                }
 
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #ff6b86;
-            background-color: #fff;
-            box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.12);
-        }
+                .widget-header p {
+                    color: #6b7280;
+                    font-size: 1.08em;
+                    margin-bottom: 1.2em;
+                }
 
-        input[type="text"]::placeholder,
-        textarea::placeholder {
-            color: #9ca3af;
-        }
+                .calendar-popup {
+                    position: fixed;
+                    right: 18px;
+                    bottom: 18px;
+                    width: 340px;
+                    max-width: calc(100vw - 24px);
+                    max-height: 70vh;
+                    overflow: auto;
+                    background: #fff;
+                    border-radius: 22px;
+                    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+                    border: 1px solid #ffd8e0;
+                    z-index: 20;
+                }
 
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
+                .cal-day.selected {
+                    background: var(--brand);
+                    color: #fff;
+                    font-weight: 600;
+                    box-shadow: 0 2px 8px 0 rgba(255, 77, 109, 0.18);
+                    border: 2px solid #fff2;
+                }
 
-        .unit-select {
-            flex: 0 0 auto;
-            min-width: 100px;
-        }
+                .cal-day.has-reminder::before {
+                    content: '';
+                    position: absolute;
+                    top: 3px;
+                    right: 3px;
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: var(--brand-2);
+                    box-shadow: 0 0 4px 1px #ff4d6d44;
+                }
 
-        button {
-            width: 100%;
-            padding: 14px 16px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            margin-top: 10px;
-            box-shadow: 0 10px 24px rgba(245, 87, 108, 0.22);
-        }
+                .btn-primary {
+                    background: var(--brand);
+                    color: #fff;
+                    box-shadow: 0 2px 12px 0 rgba(255, 77, 109, 0.13);
+                }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 28px rgba(245, 87, 108, 0.24);
-        }
+                .btn-primary:hover,
+                .btn-primary:focus {
+                    background: #e63659;
+                    color: #fff;
+                    transform: translateY(-1px);
+                    outline: none;
+                }
 
-        button:active {
-            transform: translateY(0);
-        }
+                .btn-primary:active {
+                    transform: translateY(0);
+                }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+                .btn-primary:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    transform: none;
+                }
 
-        button:focus-visible,
-        .calendar-day-btn:focus-visible,
-        .calendar-month-button:focus-visible,
-        .calendar-popup-close:focus-visible,
-        .calendar-popup-clear:focus-visible,
-        .calendar-popup-action:focus-visible,
-        .timer-adjust-btn:focus-visible,
-        .timer-chip:focus-visible,
-        .cmd-btn:focus-visible {
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.18);
-        }
+                @media (max-width: 900px) {
+                    .main-layout {
+                        flex-direction: column;
+                        gap: 0;
+                    }
 
-        .status-message {
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            margin-top: 15px;
-            display: none;
-            animation: slideIn 0.3s ease;
-        }
+                    .sidebar {
+                        width: 100%;
+                        min-width: 0;
+                        max-width: 100%;
+                        margin-bottom: 18px;
+                        border-radius: 16px;
+                        box-shadow: none;
+                        padding: 10px 0;
+                        align-items: center;
+                        justify-content: center;
+                    }
 
-        .status-message.show {
-            display: block;
-        }
+                    .sidebar-header {
+                        display: none;
+                    }
 
-        .status-message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
+                    .sidebar-commands {
+                        flex-direction: row;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                        width: 100%;
+                        justify-content: center;
+                    }
 
-        .status-message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
+                    .sidebar-commands .cmd-btn {
+                        flex: 1 1 120px;
+                        min-width: 90px;
+                        margin: 2px 0;
+                    }
 
-        .status-message.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
+                    .widget-container {
+                        padding: 20px 18px 18px;
+                    }
+                }
 
-        .widget-status {
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 12px;
-            margin-top: 15px;
-            font-size: 0.85rem;
-            color: #6b7280;
-        }
+                @media (max-width: 600px) {
+                    .sidebar-commands .cmd-btn {
+                        flex: 1 1 100px;
+                        min-width: 80px;
+                        font-size: 0.95em;
+                        padding: 7px 0;
+                    }
 
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
+                    .sidebar {
+                        padding: 8px 0;
+                    }
 
-        .widget-grid {
-            display: grid;
-            grid-template-columns: 1fr;
+                    .widget-header h2 {
+                        font-size: 1.35rem;
+                    }
+
+                    .widget-container {
+                        padding: 18px 16px 16px;
+                    }
+
+                    .calendar-popup {
+                        left: 10px;
+                        right: 10px;
+                        bottom: 10px;
+                        width: auto;
+                    }
+                }
+            </style>
             gap: 20px;
         }
 
@@ -253,9 +284,10 @@
         }
 
         .timer-input-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+            flex-wrap: nowrap;
         }
 
         .timer-step-card {
@@ -264,9 +296,11 @@
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e5e9f2;
             border-radius: 18px;
-            padding: 14px 12px 12px;
+            padding: 12px 10px 10px;
             text-align: center;
             box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+            flex: 1 1 0;
+            min-width: 0;
         }
 
         .timer-step-card::before {
@@ -286,59 +320,20 @@
             letter-spacing: 0.08em;
         }
 
-        .timer-control-row {
-            display: grid;
-            grid-template-columns: 42px minmax(0, 1fr) 42px;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .timer-adjust-btn {
-            width: 42px;
-            height: 42px;
-            margin: 0;
-            padding: 0;
-            border-radius: 14px;
-            border: 1px solid #dbe1ec;
-            background: #fff;
-            color: #c83a56;
-            font-size: 1.1rem;
-            line-height: 1;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
-        }
-
-        .timer-adjust-btn:hover {
-            transform: translateY(-1px);
-            background: #fff7f9;
-            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.12);
-        }
-
-        .timer-adjust-btn:active {
-            transform: translateY(0);
-        }
-
-        .timer-value-input {
+        .timer-number-input {
             width: 100%;
-            max-width: none;
             margin: 0;
             text-align: center;
             font-size: 1.35rem;
             font-weight: 700;
             letter-spacing: 0.04em;
-            padding: 11px 10px;
+            padding: 13px 10px;
             border-radius: 16px;
             border: 1px solid #e1e6f0;
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%),
                 radial-gradient(circle at center, rgba(255,77,109,0.05), transparent 60%);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(15, 23, 42, 0.04);
-        }
-
-        .timer-value-input:focus {
-            transform: translateY(-1px);
-        }
-
-        .timer-number-input {
             appearance: textfield;
             -moz-appearance: textfield;
         }
@@ -349,146 +344,46 @@
             margin: 0;
         }
 
-        .timer-slider-wrap {
-            margin-top: 12px;
-            padding: 10px 12px 12px;
-            border: 1px solid #e8edf6;
-            border-radius: 16px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.92) 100%);
-        }
-
-        .timer-slider-label-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .timer-slider-label {
-            font-size: 0.72rem;
+        .timer-time-separator {
+            display: grid;
+            place-items: center;
+            align-self: center;
+            width: 14px;
+            color: #cbd5e1;
+            font-size: 1.6rem;
             font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #8a8aa0;
-        }
-
-        .timer-slider-value {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #c83a56;
-        }
-
-        .timer-hour-slider {
-            width: 100%;
-            margin: 0;
-            accent-color: #f5576c;
-        }
-
-        .timer-slider-pips {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            color: #9ca3af;
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-        }
-
-        .timer-chip-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .timer-chip {
-            width: auto;
-            margin: 0;
-            padding: 7px 11px;
-            border-radius: 999px;
-            border: 1px solid #ffd2dc;
-            background: #fff;
-            color: #d94663;
-            font-size: 0.74rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            box-shadow: none;
-        }
-
-        .timer-chip:hover {
-            background: #fff7f9;
-            transform: translateY(-1px);
-            box-shadow: 0 8px 16px rgba(245, 87, 108, 0.12);
-        }
-
-        .timer-chip.is-active {
-            background: linear-gradient(135deg, #ff4d6d 0%, #ff6b86 100%);
-            color: #fff;
-            border-color: #ff4d6d;
-            box-shadow: 0 10px 18px rgba(255, 77, 109, 0.18);
-        }
-
-        .timer-unit-note {
-            display: block;
-            margin-top: 9px;
-            font-size: 0.72rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 700;
-        }
-
-        .timer-peripheral-line {
-            position: absolute;
-            left: 14px;
-            right: 14px;
-            top: 10px;
-            height: 2px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, rgba(255, 77, 109, 0.08), rgba(255, 77, 109, 0.42), rgba(255, 77, 109, 0.08));
-            opacity: 0.8;
-        }
-
-        .timer-step-card[data-pulse="low"] .timer-peripheral-line {
-            background: linear-gradient(90deg, rgba(15, 118, 110, 0.08), rgba(15, 118, 110, 0.35), rgba(15, 118, 110, 0.08));
-        }
-
-        .timer-step-card[data-pulse="mid"] .timer-peripheral-line {
-            background: linear-gradient(90deg, rgba(255, 77, 109, 0.08), rgba(255, 77, 109, 0.45), rgba(255, 77, 109, 0.08));
-        }
-
-        .timer-step-card[data-pulse="high"] .timer-peripheral-line {
-            background: linear-gradient(90deg, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.42), rgba(96, 165, 250, 0.08));
+            line-height: 1;
+            margin-top: 14px;
         }
 
         .timer-field-flag {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-width: 74px;
-            margin-bottom: 10px;
-            padding: 5px 10px;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #c83a56;
-            background: #fff1f4;
+            letter-spacing: 0.08em;
         }
 
-        .timer-field-flag::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: currentColor;
-            box-shadow: 0 0 0 6px rgba(255, 77, 109, 0.08);
-        }
-
+        .timer-number-input {
+            width: 100%;
+            margin: 0;
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            padding: 13px 10px;
+            border-radius: 16px;
+            border: 1px solid #e1e6f0;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%),
+                radial-gradient(circle at center, rgba(255,77,109,0.05), transparent 60%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(15, 23, 42, 0.04);
+            appearance: textfield;
+            -moz-appearance: textfield;
         .timer-summary {
+
+        .timer-number-input::-webkit-outer-spin-button,
+        .timer-number-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
             display: grid;
             gap: 12px;
             background: linear-gradient(180deg, #fff7f9 0%, #fff 100%);
@@ -520,40 +415,17 @@
             color: #111827;
         }
 
-        .timer-momentum-bar {
-            position: relative;
-            height: 8px;
-            border-radius: 999px;
-            overflow: hidden;
-            background: #eef2f7;
-        }
-
-        .timer-momentum-bar::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            width: calc(var(--progress, 0) * 1%);
-            background: linear-gradient(90deg, #ff4d6d 0%, #ff6b86 55%, #f0a3b2 100%);
-            border-radius: inherit;
-            box-shadow: 0 0 18px rgba(255, 77, 109, 0.35);
-        }
-
-        .timer-peripheral-note {
-            font-size: 0.76rem;
-            color: #8a8aa0;
-            text-align: center;
-            letter-spacing: 0.03em;
-        }
-
         #timerLiveCountdown {
-            font-size: 2em;
-            color: #f5576c;
-            font-family: monospace;
-            letter-spacing: 0.04em;
+            font-size: 2.1rem;
+        .timer-summary {
+            display: grid;
+            gap: 12px;
+            background: linear-gradient(180deg, #fff7f9 0%, #fff 100%);
+            border: 1px solid #ffd8e0;
+            border-radius: 20px;
+            padding: 16px;
+            margin-top: 6px;
         }
-
-        .timer-clock-wrap {
-            display: flex;
             flex-direction: column;
             align-items: center;
             gap: 14px;
@@ -981,23 +853,17 @@
             }
 
             .timer-input-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 10px;
+                gap: 8px;
             }
 
             .timer-step-card {
                 padding: 12px 10px 10px;
             }
 
-            .timer-control-row {
-                grid-template-columns: 38px minmax(0, 1fr) 38px;
-                gap: 6px;
-            }
-
-            .timer-adjust-btn {
-                width: 38px;
-                height: 38px;
-                border-radius: 12px;
+            .timer-time-separator {
+                width: 10px;
+                font-size: 1.35rem;
+                margin-top: 12px;
             }
 
             .timer-clock-face {
@@ -1009,17 +875,13 @@
                 font-size: 1.8rem;
             }
 
-            .timer-actions button {
-                flex-basis: 100%;
-            }
-
             .timer-number-input {
                 max-width: 100%;
                 font-size: 1.05rem;
             }
 
-            .timer-momentum-bar {
-                height: 7px;
+            .timer-actions button {
+                flex-basis: 100%;
             }
 
             button {
@@ -1065,55 +927,19 @@
                         </div>
                         <form id="timerForm">
                             <div class="form-group timer-input-grid" id="timerInputGroup">
-                                <div class="timer-step-card" data-pulse="low">
-                                    <div class="timer-peripheral-line"></div>
+                                <div class="timer-step-card">
                                     <span class="timer-field-flag">Hours</span>
-                                    <div class="timer-control-row">
-                                        <button type="button" class="timer-adjust-btn" data-target="timerHours" data-step="-1" aria-label="Decrease hours">−</button>
-                                        <input type="number" id="timerHours" name="timerHours" class="timer-number-input timer-value-input" value="0" min="0" max="23" step="1" inputmode="numeric" aria-label="Hours" />
-                                        <button type="button" class="timer-adjust-btn" data-target="timerHours" data-step="1" aria-label="Increase hours">+</button>
-                                    </div>
-                                    <span class="timer-unit-note">0-23</span>
-                                    <div class="timer-slider-wrap">
-                                        <div class="timer-slider-label-row">
-                                            <span class="timer-slider-label">Day position</span>
-                                            <span class="timer-slider-value" id="timerHoursSliderValue">0h</span>
-                                        </div>
-                                        <input type="range" id="timerHoursSlider" class="timer-hour-slider" min="0" max="23" step="1" value="0" aria-label="Hours slider" />
-                                        <div class="timer-slider-pips" aria-hidden="true">
-                                            <span>0</span>
-                                            <span>6</span>
-                                            <span>12</span>
-                                            <span>18</span>
-                                            <span>23</span>
-                                        </div>
-                                        <div class="timer-chip-row" id="timerHourChips">
-                                            <button type="button" class="timer-chip" data-hours="1">1h</button>
-                                            <button type="button" class="timer-chip" data-hours="2">2h</button>
-                                            <button type="button" class="timer-chip" data-hours="4">4h</button>
-                                            <button type="button" class="timer-chip" data-hours="8">8h</button>
-                                        </div>
-                                    </div>
+                                    <input type="number" id="timerHours" name="timerHours" class="timer-number-input" value="0" min="0" max="23" step="1" inputmode="numeric" aria-label="Hours" />
                                 </div>
-                                <div class="timer-step-card" data-pulse="mid">
-                                    <div class="timer-peripheral-line"></div>
+                                <span class="timer-time-separator" aria-hidden="true">:</span>
+                                <div class="timer-step-card">
                                     <span class="timer-field-flag">Minutes</span>
-                                    <div class="timer-control-row">
-                                        <button type="button" class="timer-adjust-btn" data-target="timerMinutes" data-step="-1" aria-label="Decrease minutes">−</button>
-                                        <input type="number" id="timerMinutes" name="timerMinutes" class="timer-number-input timer-value-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Minutes" />
-                                        <button type="button" class="timer-adjust-btn" data-target="timerMinutes" data-step="1" aria-label="Increase minutes">+</button>
-                                    </div>
-                                    <span class="timer-unit-note">0-59</span>
+                                    <input type="number" id="timerMinutes" name="timerMinutes" class="timer-number-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Minutes" />
                                 </div>
-                                <div class="timer-step-card" data-pulse="high">
-                                    <div class="timer-peripheral-line"></div>
+                                <span class="timer-time-separator" aria-hidden="true">:</span>
+                                <div class="timer-step-card">
                                     <span class="timer-field-flag">Seconds</span>
-                                    <div class="timer-control-row">
-                                        <button type="button" class="timer-adjust-btn" data-target="timerSeconds" data-step="-1" aria-label="Decrease seconds">−</button>
-                                        <input type="number" id="timerSeconds" name="timerSeconds" class="timer-number-input timer-value-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Seconds" />
-                                        <button type="button" class="timer-adjust-btn" data-target="timerSeconds" data-step="1" aria-label="Increase seconds">+</button>
-                                    </div>
-                                    <span class="timer-unit-note">0-59</span>
+                                    <input type="number" id="timerSeconds" name="timerSeconds" class="timer-number-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Seconds" />
                                 </div>
                             </div>
                             <div class="form-group">
@@ -1143,8 +969,6 @@
                                 </div>
                                 <div id="timerEndAt">Ends at --:--</div>
                             </div>
-                            <div class="timer-momentum-bar"></div>
-                            <div class="timer-peripheral-note">Momentum UX keeps the timer visible without demanding attention.</div>
                             <div class="timer-actions">
                                 <button type="button" id="resetTimerBtn" class="timer-secondary-btn">Reset</button>
                             </div>
@@ -1217,10 +1041,6 @@
             timerSeconds: document.getElementById('timerSeconds')
         };
 
-        const hoursSlider = document.getElementById('timerHoursSlider');
-        const hoursSliderValue = document.getElementById('timerHoursSliderValue');
-        const hourChips = document.querySelectorAll('#timerHourChips .timer-chip');
-
         function getValue(target) {
             const input = inputs[target];
             if (!input) return 0;
@@ -1240,25 +1060,8 @@
             const bounded = clamp(Number.isFinite(value) ? value : 0, min, max);
             input.value = String(bounded);
 
-            if (target === 'timerHours') {
-                if (hoursSlider) hoursSlider.value = String(bounded);
-                if (hoursSliderValue) hoursSliderValue.textContent = `${bounded}h`;
-                hourChips.forEach((chip) => {
-                    const chipHours = parseInt(chip.getAttribute('data-hours'), 10);
-                    chip.classList.toggle('is-active', chipHours === bounded);
-                });
-            }
-
             return bounded;
         }
-
-        document.querySelectorAll('.timer-adjust-btn').forEach((btn) => {
-            btn.addEventListener('click', function() {
-                const target = btn.getAttribute('data-target');
-                const step = parseInt(btn.getAttribute('data-step'), 10) || 0;
-                setValue(target, getValue(target) + step);
-            });
-        });
 
         Object.keys(inputs).forEach((target) => {
             const input = inputs[target];
@@ -1282,19 +1085,6 @@
 
             input.addEventListener('blur', function() {
                 setValue(target, getValue(target));
-            });
-        });
-
-        if (hoursSlider) {
-            hoursSlider.addEventListener('input', function() {
-                setValue('timerHours', parseInt(hoursSlider.value, 10) || 0);
-            });
-        }
-
-        hourChips.forEach((chip) => {
-            chip.addEventListener('click', function() {
-                const chipHours = parseInt(chip.getAttribute('data-hours'), 10);
-                setValue('timerHours', chipHours);
             });
         });
 
@@ -1460,27 +1250,5 @@
 
     <script src="reminder-widget-v2.js"></script>
     <!-- Timer logic is now handled in reminder-widget-v2.js -->
-    <style>
-    /* Modern calendar input style (macOS/Microsoft inspired) */
-    input[type="datetime-local"] {
-        background: #f5f6fa;
-        border: 1.5px solid #d1d5db;
-        border-radius: 8px;
-        padding: 10px 12px;
-        font-size: 1rem;
-        color: #333;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-        transition: border-color 0.2s;
-    }
-    input[type="datetime-local"]:focus {
-        border-color: #f5576c;
-        background: #fff9fa;
-    }
-    /* Hide spinner for datetime-local on Chrome */
-    input[type="datetime-local"]::-webkit-inner-spin-button,
-    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-        filter: invert(0.5) sepia(1) saturate(5) hue-rotate(-20deg);
-    }
-    </style>
 </body>
 </html>
