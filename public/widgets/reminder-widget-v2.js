@@ -15,58 +15,10 @@ let roomId;
 let userId;
 let homeserverUrl;
 let isReady = false;
-let matrixAdapterUrl = null;
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
 let requestCounter = 0;
-const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
-const DEFAULT_MATRIX_ADAPTER_URL = '/api/matrix/command';
-
-function getMatrixAdapterUrl() {
-    if (matrixAdapterUrl) return matrixAdapterUrl;
-
-    const params = new URLSearchParams(window.location.search);
-    const configuredUrl = params.get('matrixAdapterUrl')
-        || window.MATRIX_ADAPTER_URL
-        || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY)
-        || DEFAULT_MATRIX_ADAPTER_URL;
-
-    matrixAdapterUrl = configuredUrl.trim();
-    return matrixAdapterUrl;
-}
-
-function isMatrixAdapterMode() {
-    return Boolean(getMatrixAdapterUrl());
-}
-
-async function sendMatrixCommandViaAdapter(command) {
-    const adapterUrl = getMatrixAdapterUrl();
-    if (!adapterUrl) {
-        throw new Error('Matrix adapter URL is not configured');
-    }
-
-    const response = await fetch(adapterUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            roomId,
-            userId,
-            homeserverUrl,
-            command,
-            source: 'reminder-widget'
-        })
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(errorText || `Matrix adapter error: ${response.status}`);
-    }
-
-    return response.json().catch(() => ({}));
-}
 
 /**
  * PostMessage API using proper request/response correlation
@@ -154,6 +106,94 @@ class MatrixWidgetAPI {
 
 let widgetApi = new MatrixWidgetAPI();
 let openIdToken = null;
+const TOKEN_MAP_STORAGE_KEY = "matrixAccessTokensByUser";
+
+function normalizeMatrixUserId(value) {
+    const v = typeof value === "string" ? value.trim() : "";
+    return v || null;
+}
+
+function readTokenMap() {
+    try {
+        const raw = localStorage.getItem(TOKEN_MAP_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function writeTokenMap(map) {
+    try {
+        localStorage.setItem(TOKEN_MAP_STORAGE_KEY, JSON.stringify(map));
+    } catch {
+        // ignore storage write failures
+    }
+}
+
+function storeUserToken(user, token) {
+    const normalizedUser = normalizeMatrixUserId(user);
+    const normalizedToken = typeof token === "string" ? token.trim() : "";
+    if (!normalizedUser || !normalizedToken) return;
+
+    const tokenMap = readTokenMap();
+    tokenMap[normalizedUser] = normalizedToken;
+    writeTokenMap(tokenMap);
+}
+
+function getStoredUserToken(user) {
+    const normalizedUser = normalizeMatrixUserId(user);
+    if (!normalizedUser) return null;
+    const tokenMap = readTokenMap();
+    const token = tokenMap[normalizedUser];
+    return typeof token === "string" && token.trim() ? token.trim() : null;
+}
+
+function resolveMatrixAccessToken(options = {}) {
+    const params = options.params || new URLSearchParams(window.location.search);
+    const explicitUser = normalizeMatrixUserId(options.userId);
+    const activeUser = explicitUser || normalizeMatrixUserId(userId);
+
+    const urlToken = params.get("accessToken") || "";
+    if (urlToken.trim()) {
+        if (activeUser) {
+            storeUserToken(activeUser, urlToken);
+        }
+        return urlToken.trim();
+    }
+
+    const userScopedToken = getStoredUserToken(activeUser);
+    if (userScopedToken) return userScopedToken;
+
+    if (typeof openIdToken === "string" && openIdToken.trim()) {
+        if (activeUser) {
+            storeUserToken(activeUser, openIdToken);
+        }
+        return openIdToken.trim();
+    }
+
+    const legacyStorageToken = typeof options.legacyStorageToken === "string"
+        ? options.legacyStorageToken
+        : (localStorage.getItem("matrixAccessToken") || "");
+    if (legacyStorageToken.trim()) {
+        if (activeUser) {
+            storeUserToken(activeUser, legacyStorageToken);
+        }
+        return legacyStorageToken.trim();
+    }
+
+    // Last fallback only; global token can belong to another account.
+    const globalToken = typeof window.MATRIX_ACCESS_TOKEN === "string" ? window.MATRIX_ACCESS_TOKEN : "";
+    if (globalToken.trim()) {
+        if (activeUser) {
+            storeUserToken(activeUser, globalToken);
+        }
+        return globalToken.trim();
+    }
+
+    return null;
+}
 
 /**
  * Update the status indicator and text
@@ -198,8 +238,13 @@ function initStandaloneMatrixContext() {
     roomId = params.get("roomId") || storage.roomId || roomId;
     userId = params.get("userId") || storage.userId || userId;
     homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || storage.homeserverUrl || homeserverUrl;
-    matrixAdapterUrl = params.get('matrixAdapterUrl') || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
-    openIdToken = isMatrixAdapterMode() ? null : (params.get("accessToken") || storage.accessToken || openIdToken);
+    const urlAccessToken = params.get("accessToken") || "";
+    const normalizedStorageToken = typeof storage.accessToken === "string" ? storage.accessToken.trim() : "";
+    if (urlAccessToken.trim()) {
+        openIdToken = urlAccessToken.trim();
+    } else if (normalizedStorageToken) {
+        openIdToken = normalizedStorageToken;
+    }
 
     if (!roomId) {
         roomId = window.prompt("Enter Matrix Room ID (example: !abc123:matrix.org):", "") || "";
@@ -207,30 +252,34 @@ function initStandaloneMatrixContext() {
     if (!homeserverUrl) {
         homeserverUrl = window.prompt("Enter Matrix homeserver URL (example: https://matrix.org):", "") || "";
     }
-    if (!isMatrixAdapterMode() && !openIdToken) {
+    if (!openIdToken) {
         openIdToken = window.prompt("Enter Matrix access token:", "") || "";
     }
     if (!userId) {
         userId = window.prompt("Optional Matrix user ID (example: @alice:matrix.org):", "") || "";
     }
 
+    const resolvedToken = resolveMatrixAccessToken({
+        params,
+        userId,
+        legacyStorageToken: storage.accessToken || ""
+    });
+    openIdToken = resolvedToken || openIdToken;
+
     if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
         homeserverUrl = `https://${homeserverUrl}`;
     }
 
-    if (!roomId || !homeserverUrl || (!isMatrixAdapterMode() && !openIdToken)) {
-        throw new Error("Standalone mode requires roomId, homeserver, and either accessToken or matrixAdapterUrl");
+    if (!roomId || !homeserverUrl || !openIdToken) {
+        throw new Error("Standalone mode requires roomId, homeserver, and accessToken");
     }
 
     localStorage.setItem("matrixRoomId", roomId);
     localStorage.setItem("matrixHomeserverUrl", homeserverUrl);
-    if (isMatrixAdapterMode()) {
-        localStorage.setItem(MATRIX_ADAPTER_URL_STORAGE_KEY, matrixAdapterUrl);
-    } else {
-        localStorage.setItem("matrixAccessToken", openIdToken);
-    }
+    localStorage.setItem("matrixAccessToken", openIdToken);
     if (userId) {
         localStorage.setItem("matrixUserId", userId);
+        storeUserToken(userId, openIdToken);
     }
 
     console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
@@ -294,19 +343,16 @@ async function initWidget() {
             }
         }, "*");
 
-        if (isMatrixAdapterMode()) {
-            console.log("[Init] Matrix adapter mode enabled; skipping OpenID token request.");
-        } else {
-            // Step 3: Request OpenID token
-            console.log("[Init] Requesting OpenID token...");
-            const tokenResponse = await widgetApi.sendRequest("org.matrix.msc2931.openid_credentials", {}, widgetId);
+        // Step 3: Request OpenID token
+        console.log("[Init] Requesting OpenID token...");
+        const tokenResponse = await widgetApi.sendRequest("org.matrix.msc2931.openid_credentials", {}, widgetId);
 
-            if (tokenResponse && tokenResponse.data?.access_token) {
-                openIdToken = tokenResponse.data.access_token;
-                console.log("✓ Got OpenID token from Element!");
-            } else {
-                console.warn("⚠️  No token response from Element, will use guest auth");
-            }
+        if (tokenResponse && tokenResponse.data?.access_token) {
+            openIdToken = tokenResponse.data.access_token;
+            storeUserToken(userId, openIdToken);
+            console.log("✓ Got OpenID token from Element!");
+        } else {
+            console.warn("⚠️  No token response from Element, will use guest auth");
         }
 
         // Step 4: Extract context from widgetId (from Element's capabilities message)
@@ -346,255 +392,7 @@ let activeTimer = null;
 let timerWidgetInterval = null;
 let calendarCountdownInterval = null;
 let isCalendarPopupDismissed = false;
-let editingCalendarReminderId = null;
 const CALENDAR_REMINDERS_STORAGE_KEY = 'matrixCalendarReminders';
-const WIDGET_MODE_STORAGE_KEY = 'matrixReminderWidgetMode';
-
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function padCalendarNumber(value) {
-    return String(value).padStart(2, '0');
-}
-
-function getCalendarOrdinalSuffix(day) {
-    const mod100 = day % 100;
-    if (mod100 >= 11 && mod100 <= 13) return 'th';
-
-    switch (day % 10) {
-        case 1:
-            return 'st';
-        case 2:
-            return 'nd';
-        case 3:
-            return 'rd';
-        default:
-            return 'th';
-    }
-}
-
-function parseCalendarDateValue(dateValue) {
-    if (!dateValue) return null;
-
-    const parts = String(dateValue).split('-').map((item) => parseInt(item, 10));
-    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
-        return null;
-    }
-
-    return new Date(parts[0], parts[1] - 1, parts[2]);
-}
-
-function formatCalendarFriendlyDate(dateValue) {
-    const date = parseCalendarDateValue(dateValue);
-    if (!date) return '';
-
-    const weekday = date.toLocaleDateString([], { weekday: 'long' });
-    const month = date.toLocaleDateString([], { month: 'long' });
-    const day = date.getDate();
-    return `${weekday}, ${month} ${day}${getCalendarOrdinalSuffix(day)}`;
-}
-
-function formatCalendarRelativeLabel(dateValue) {
-    const date = parseCalendarDateValue(dateValue);
-    if (!date) return 'Pick a future day to continue.';
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.round((date.getTime() - today.getTime()) / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays > 1) return `In ${diffDays} days`;
-    return `${Math.abs(diffDays)} days ago`;
-}
-
-function updateCalendarConfirmationLine(dateValue) {
-    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
-    const calendarSelectedDateMeta = document.getElementById('calendarSelectedDateMeta');
-
-    if (!calendarSelectedDateValue || !calendarSelectedDateMeta) return;
-
-    if (!dateValue) {
-        calendarSelectedDateValue.textContent = 'Select a date to get started.';
-        calendarSelectedDateMeta.textContent = 'Pick a future day to continue.';
-        return;
-    }
-
-    calendarSelectedDateValue.textContent = `Setting reminder for ${formatCalendarFriendlyDate(dateValue)}.`;
-    calendarSelectedDateMeta.textContent = formatCalendarRelativeLabel(dateValue);
-}
-
-function populateCalendarTimeSelects() {
-    const calendarHour = document.getElementById('calendarHour');
-    const calendarMinute = document.getElementById('calendarMinute');
-    const calendarPeriod = document.getElementById('calendarPeriod');
-
-    if (calendarHour && calendarHour.options.length === 0) {
-        for (let hour = 1; hour <= 12; hour++) {
-            const option = document.createElement('option');
-            option.value = String(hour);
-            option.textContent = padCalendarNumber(hour);
-            calendarHour.appendChild(option);
-        }
-    }
-
-    if (calendarMinute && calendarMinute.options.length === 0) {
-        for (let minute = 0; minute < 60; minute++) {
-            const option = document.createElement('option');
-            option.value = padCalendarNumber(minute);
-            option.textContent = padCalendarNumber(minute);
-            calendarMinute.appendChild(option);
-        }
-    }
-
-    if (calendarPeriod && calendarPeriod.options.length === 0) {
-        ['AM', 'PM'].forEach((period) => {
-            const option = document.createElement('option');
-            option.value = period;
-            option.textContent = period;
-            calendarPeriod.appendChild(option);
-        });
-    }
-}
-
-function getDefaultCalendarTimeParts() {
-    const future = new Date();
-    future.setMinutes(future.getMinutes() + 5);
-    future.setMinutes(Math.ceil(future.getMinutes() / 5) * 5, 0, 0);
-
-    const hour24 = future.getHours();
-    let hour12 = hour24 % 12;
-    if (hour12 === 0) hour12 = 12;
-
-    return {
-        hour: String(hour12),
-        minute: padCalendarNumber(future.getMinutes()),
-        period: hour24 >= 12 ? 'PM' : 'AM'
-    };
-}
-
-function setCalendarTimeSelectValue(parts) {
-    const calendarHour = document.getElementById('calendarHour');
-    const calendarMinute = document.getElementById('calendarMinute');
-    const calendarPeriod = document.getElementById('calendarPeriod');
-
-    if (!calendarHour || !calendarMinute || !calendarPeriod || !parts) return;
-
-    calendarHour.value = parts.hour;
-    calendarMinute.value = parts.minute;
-    calendarPeriod.value = parts.period;
-}
-
-function setCalendarTimeFromDate(date) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-        setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
-        return;
-    }
-
-    const hour24 = date.getHours();
-    let hour12 = hour24 % 12;
-    if (hour12 === 0) hour12 = 12;
-
-    setCalendarTimeSelectValue({
-        hour: String(hour12),
-        minute: padCalendarNumber(date.getMinutes()),
-        period: hour24 >= 12 ? 'PM' : 'AM'
-    });
-}
-
-function getCalendarTimeValue() {
-    const calendarHour = document.getElementById('calendarHour');
-    const calendarMinute = document.getElementById('calendarMinute');
-    const calendarPeriod = document.getElementById('calendarPeriod');
-
-    if (!calendarHour || !calendarMinute || !calendarPeriod) return '';
-
-    const hour12 = parseInt(calendarHour.value, 10);
-    const minute = parseInt(calendarMinute.value, 10);
-    const period = String(calendarPeriod.value || 'AM').toUpperCase();
-
-    if (Number.isNaN(hour12) || Number.isNaN(minute)) {
-        return '';
-    }
-
-    let hour24 = hour12 % 12;
-    if (period === 'PM') {
-        hour24 += 12;
-    }
-
-    return `${padCalendarNumber(hour24)}:${padCalendarNumber(minute)}`;
-}
-
-function clearCalendarReminderEditState() {
-    editingCalendarReminderId = null;
-
-    const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
-    if (calendarSetReminderBtn) {
-        calendarSetReminderBtn.textContent = 'Set Reminder';
-    }
-}
-
-function setCalendarReminderFormValues(reminder) {
-    const calendarSelectedDate = document.getElementById('calendarSelectedDate');
-    const calendarMessage = document.getElementById('calendarMessage');
-    const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
-    const calendarStatus = document.getElementById('calendarStatusMessage');
-
-    if (!reminder) return;
-
-    const reminderDate = new Date(reminder.targetMs);
-    const pad = (value) => String(value).padStart(2, '0');
-    const selectedDate = `${reminderDate.getFullYear()}-${pad(reminderDate.getMonth() + 1)}-${pad(reminderDate.getDate())}`;
-
-    if (calendarSelectedDate) calendarSelectedDate.value = selectedDate;
-    updateCalendarConfirmationLine(selectedDate);
-    setCalendarTimeFromDate(reminderDate);
-    if (calendarMessage) calendarMessage.value = reminder.message;
-    if (calendarSetReminderBtn) calendarSetReminderBtn.textContent = 'Update Reminder';
-
-    if (typeof window.__setCalendarReminderDate === 'function') {
-        window.__setCalendarReminderDate(selectedDate, false);
-    }
-
-    editingCalendarReminderId = reminder.id;
-
-    if (calendarStatus) {
-        calendarStatus.textContent = 'Editing reminder. Change the date or time, then submit to update the countdown.';
-        calendarStatus.className = 'status-message show info';
-    }
-}
-
-function removeCalendarReminder(reminderId) {
-    const index = calendarReminders.findIndex((item) => item.id === reminderId);
-    if (index === -1) return false;
-
-    calendarReminders.splice(index, 1);
-    saveCalendarReminders();
-    refreshCalendarCountdownView();
-
-    if (editingCalendarReminderId === reminderId) {
-        clearCalendarReminderEditState();
-    }
-
-    return true;
-}
-
-function clearAllCalendarReminders() {
-    if (calendarReminders.length === 0) return false;
-
-    calendarReminders = [];
-    saveCalendarReminders();
-    clearCalendarReminderEditState();
-    refreshCalendarCountdownView();
-    return true;
-}
 
 function formatDateTime(dt) {
     const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
@@ -651,54 +449,6 @@ function hideCalendarCountdownPopup() {
     if (popup) popup.style.display = 'none';
 }
 
-function showCalendarConfirmDialog(message, confirmLabel) {
-    return new Promise((resolve) => {
-        const dialog = document.getElementById('calendarConfirmDialog');
-        const title = document.getElementById('calendarConfirmTitle');
-        const messageEl = document.getElementById('calendarConfirmMessage');
-        const cancelBtn = document.getElementById('calendarConfirmCancel');
-        const okBtn = document.getElementById('calendarConfirmOk');
-
-        if (!dialog || !title || !messageEl || !cancelBtn || !okBtn) {
-            resolve(true);
-            return;
-        }
-
-        const close = (result) => {
-            dialog.classList.remove('is-open');
-            dialog.setAttribute('aria-hidden', 'true');
-            document.removeEventListener('keydown', onKeyDown);
-            cancelBtn.onclick = null;
-            okBtn.onclick = null;
-            dialog.onclick = null;
-            resolve(result);
-        };
-
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                close(false);
-            }
-        };
-
-        title.textContent = 'Are you sure?';
-        messageEl.textContent = message;
-        okBtn.textContent = confirmLabel || 'Confirm';
-
-        cancelBtn.onclick = () => close(false);
-        okBtn.onclick = () => close(true);
-        dialog.onclick = (event) => {
-            if (event.target && event.target.getAttribute('data-close-confirm') === 'true') {
-                close(false);
-            }
-        };
-
-        document.addEventListener('keydown', onKeyDown);
-        dialog.setAttribute('aria-hidden', 'false');
-        dialog.classList.add('is-open');
-        okBtn.focus();
-    });
-}
-
 function renderCalendarReminderCountdowns() {
     const calendarPopupList = document.getElementById('calendarPopupList');
     if (!calendarPopupList) return;
@@ -722,10 +472,6 @@ function renderCalendarReminderCountdowns() {
                 <div class="calendar-popup-item-meta">
                     <span>${formatDateTime(new Date(item.targetMs))}</span>
                     <span class="calendar-popup-item-countdown">${formatDuration(remaining)}</span>
-                </div>
-                <div class="calendar-popup-item-actions">
-                    <button type="button" class="calendar-popup-action" data-action="reschedule" data-reminder-id="${escapeHtml(item.id)}">Reschedule</button>
-                    <button type="button" class="calendar-popup-action secondary" data-action="delete" data-reminder-id="${escapeHtml(item.id)}">Delete</button>
                 </div>
             </li>`;
         })
@@ -781,15 +527,11 @@ async function sendReminderAtDateTime(dateTime, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
-    if (isMatrixAdapterMode()) {
-        return sendMatrixCommandViaAdapter(reminderCommand);
-    }
-
     if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
 
-    let token = openIdToken;
+    let token = resolveMatrixAccessToken();
     if (!token) {
         throw new Error("No access token available");
     }
@@ -889,56 +631,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarForm = document.getElementById('calendarReminderForm');
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
-    const calendarPopupClearBtn = document.getElementById('calendarPopupClearBtn');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
-    const calendarPopupList = document.getElementById('calendarPopupList');
-    const widgetModeSwitch = document.getElementById('widgetModeSwitch');
-    const widgetModeButtons = Array.from(document.querySelectorAll('.widget-mode-button'));
-    const widgetModePanels = Array.from(document.querySelectorAll('[data-mode-panel]'));
-
-    function setWidgetMode(mode) {
-        const normalizedMode = mode === 'calendar' ? 'calendar' : 'timer';
-
-        if (widgetModeSwitch) {
-            widgetModeSwitch.setAttribute('data-active-mode', normalizedMode);
-        }
-
-        widgetModeButtons.forEach((button) => {
-            const isActive = button.getAttribute('data-mode') === normalizedMode;
-            button.classList.toggle('is-active', isActive);
-            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-
-        widgetModePanels.forEach((panel) => {
-            const panelMode = panel.getAttribute('data-mode-panel');
-            panel.classList.toggle('is-hidden-by-mode', panelMode !== normalizedMode);
-        });
-
-        try {
-            localStorage.setItem(WIDGET_MODE_STORAGE_KEY, normalizedMode);
-        } catch (error) {
-            console.warn('[Widget] Failed to persist widget mode:', error);
-        }
-    }
-
-    widgetModeButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            setWidgetMode(button.getAttribute('data-mode'));
-        });
-    });
-
-    const initialMode = (() => {
-        try {
-            return localStorage.getItem(WIDGET_MODE_STORAGE_KEY) || 'timer';
-        } catch (error) {
-            return 'timer';
-        }
-    })();
-
-    setWidgetMode(initialMode);
-
-    populateCalendarTimeSelects();
-    setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
+    const calendarTimeInput = document.getElementById('calendarTime');
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
@@ -1045,11 +739,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (calendarForm) {
         calendarForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const selectedCalendarDate = document.getElementById('calendarSelectedDate').value;
-            const calendarTime = getCalendarTimeValue();
+            const selectedDate = document.getElementById('calendarSelectedDate').value;
+            const calendarTime = document.getElementById('calendarTime').value;
             const calendarMessage = document.getElementById('calendarMessage').value.trim();
 
-            if (!selectedCalendarDate) {
+            if (!selectedDate) {
                 calendarStatus.textContent = 'Select date';
                 calendarStatus.className = 'status-message show error';
                 return;
@@ -1061,114 +755,43 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const targetDate = new Date(`${selectedCalendarDate}T${calendarTime}`);
+            const targetDate = new Date(`${selectedDate}T${calendarTime}`);
             if (Number.isNaN(targetDate.getTime()) || targetDate.getTime() <= Date.now()) {
                 calendarStatus.textContent = 'Pick a future time';
                 calendarStatus.className = 'status-message show error';
                 return;
             }
 
-            const dateTime = `${selectedCalendarDate} ${calendarTime}`;
-            const isEditingReminder = editingCalendarReminderId !== null;
+            const dateTime = `${selectedDate} ${calendarTime}`;
 
             try {
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = true;
-                calendarStatus.textContent = isEditingReminder ? 'Updating...' : 'Sending...';
+                calendarStatus.textContent = 'Sending...';
                 calendarStatus.className = 'status-message show info';
 
-                if (isEditingReminder) {
-                    const reminderIndex = calendarReminders.findIndex((item) => item.id === editingCalendarReminderId);
-                    if (reminderIndex === -1) {
-                        throw new Error('Reminder no longer exists');
-                    }
+                await sendReminderAtDateTime(dateTime, calendarMessage);
 
-                    await sendReminderAtDateTime(dateTime, calendarMessage);
-
-                    calendarReminders[reminderIndex] = {
-                        id: editingCalendarReminderId,
-                        targetMs: targetDate.getTime(),
-                        message: calendarMessage
-                    };
-                } else {
-                    await sendReminderAtDateTime(dateTime, calendarMessage);
-
-                    calendarReminders.push({
-                        id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                        targetMs: targetDate.getTime(),
-                        message: calendarMessage
-                    });
-                }
+                calendarReminders.push({
+                    id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    targetMs: targetDate.getTime(),
+                    message: calendarMessage
+                });
 
                 calendarReminders.sort((a, b) => a.targetMs - b.targetMs);
                 saveCalendarReminders();
                 isCalendarPopupDismissed = false;
                 refreshCalendarCountdownView();
 
-                if (isEditingReminder) {
-                    clearCalendarReminderEditState();
-                }
-
-                calendarStatus.textContent = isEditingReminder ? 'Reminder updated' : 'Reminder set';
+                calendarStatus.textContent = 'Reminder set';
                 calendarStatus.className = 'status-message show success';
 
                 calendarForm.reset();
-                setSelectedCalendarDate(null);
-                setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
-                clearCalendarReminderEditState();
+                document.getElementById('calendarSelectedDate').value = '';
             } catch (err) {
                 calendarStatus.textContent = 'Error: ' + err.message;
                 calendarStatus.className = 'status-message show error';
             } finally {
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = false;
-            }
-        });
-    }
-
-    if (calendarPopupList) {
-        calendarPopupList.addEventListener('click', async function(event) {
-            const button = event.target.closest('button[data-action][data-reminder-id]');
-            if (!button) return;
-
-            const action = button.getAttribute('data-action');
-            const reminderId = button.getAttribute('data-reminder-id');
-            const reminder = calendarReminders.find((item) => item.id === reminderId);
-            if (!reminder) return;
-
-            if (action === 'delete') {
-                const confirmed = await showCalendarConfirmDialog(
-                    `Delete reminder "${reminder.message}"?`,
-                    'Delete'
-                );
-                if (!confirmed) return;
-
-                removeCalendarReminder(reminderId);
-                if (calendarStatus) {
-                    calendarStatus.textContent = 'Reminder deleted';
-                    calendarStatus.className = 'status-message show success';
-                }
-                return;
-            }
-
-            if (action === 'reschedule') {
-                setCalendarReminderFormValues(reminder);
-            }
-        });
-    }
-
-    if (calendarPopupClearBtn) {
-        calendarPopupClearBtn.addEventListener('click', async function() {
-            if (calendarReminders.length === 0) return;
-
-            const confirmed = await showCalendarConfirmDialog(
-                'Clear all upcoming reminders in this room?',
-                'Clear All'
-            );
-            if (!confirmed) return;
-
-            clearAllCalendarReminders();
-            if (calendarStatus) {
-                calendarStatus.textContent = 'All reminders cleared';
-                calendarStatus.className = 'status-message show success';
             }
         });
     }
@@ -1186,12 +809,7 @@ async function sendCommandToMatrix(command) {
     if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
-
-    if (isMatrixAdapterMode()) {
-        return sendMatrixCommandViaAdapter(command);
-    }
-
-    let token = openIdToken;
+    let token = resolveMatrixAccessToken();
     if (!token) {
         throw new Error("No access token available");
     }
@@ -1251,21 +869,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevMonthBtn = document.getElementById('prevMonth');
     const nextMonthBtn = document.getElementById('nextMonth');
     const calendarSelectedDate = document.getElementById('calendarSelectedDate');
+    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
 
     function syncSelectedDateLabel() {
-        updateCalendarConfirmationLine(selectedDate);
-    }
-
-    function setSelectedCalendarDate(dateValue, shouldSyncInput = true) {
-        selectedDate = dateValue || null;
-        if (shouldSyncInput && calendarSelectedDate) {
-            calendarSelectedDate.value = dateValue || '';
+        if (calendarSelectedDateValue) {
+            calendarSelectedDateValue.textContent = selectedDate || 'None';
         }
-        syncSelectedDateLabel();
-        renderCalendar(currentMonth, currentYear);
     }
-
-    window.__setCalendarReminderDate = setSelectedCalendarDate;
 
     function renderCalendar(month, year) {
         // Month label
@@ -1279,8 +889,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstDay = new Date(year, month, 1).getDay();
         // Days in month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
         // Build calendar grid
         let html = '<thead><tr>';
@@ -1300,17 +908,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<td class="calendar-day-cell"></td>';
                 } else {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
-                    const currentDate = new Date(year, month, date);
-                    currentDate.setHours(0, 0, 0, 0);
-                    const isToday = currentDate.getTime() === today.getTime();
-                    const isPast = currentDate.getTime() < today.getTime();
                     let classes = 'calendar-day-btn';
-                    if (isToday) classes += ' is-today';
-                    if (isPast) classes += ' is-past';
                     if (selectedDate === dateStr) classes += ' is-selected';
-                    const ariaLabel = `${formatCalendarFriendlyDate(dateStr)}${isToday ? ', today' : ''}${isPast ? ', unavailable' : ''}`;
                     html += `<td class="calendar-day-cell">
-                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${ariaLabel}"${isPast ? ' disabled aria-disabled="true" tabindex="-1"' : ''}>
+                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${dateStr}">
                             ${date}
                         </button>
                     </td>`;
@@ -1325,7 +926,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add click listeners to date buttons
         document.querySelectorAll('.calendar-day-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                setSelectedCalendarDate(btn.getAttribute('data-date'));
+                selectedDate = btn.getAttribute('data-date');
+                calendarSelectedDate.value = selectedDate;
+                syncSelectedDateLabel();
+                renderCalendar(currentMonth, currentYear);
             });
         });
 
