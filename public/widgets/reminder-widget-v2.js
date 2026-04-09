@@ -16,12 +16,68 @@ let userId;
 let homeserverUrl;
 let isReady = false;
 let matrixAdapterUrl = null;
+let matrixAccessTokenEnvelope = null;
+let matrixRefreshTokenEnvelope = null;
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
 let requestCounter = 0;
 const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
 const DEFAULT_MATRIX_ADAPTER_URL = '/api/matrix/command';
+const MATRIX_ACCESS_TOKEN_STORAGE_KEY = 'mx_access_token';
+const MATRIX_REFRESH_TOKEN_STORAGE_KEY = 'mx_refresh_token';
+
+function normalizeMatrixTokenEnvelope(rawValue) {
+    if (!rawValue) return null;
+
+    if (typeof rawValue === 'object') {
+        return rawValue;
+    }
+
+    const text = String(rawValue).trim();
+    if (!text) return null;
+
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object') {
+            return parsed;
+        }
+    } catch (error) {
+        // Ignore invalid JSON and require a structured token envelope.
+    }
+
+    return null;
+}
+
+function readMatrixTokenEnvelope(params, paramKey, storageKey, legacyStorageKey) {
+    const rawValue = params.get(paramKey)
+        || localStorage.getItem(storageKey)
+        || (legacyStorageKey ? localStorage.getItem(legacyStorageKey) : null);
+
+    return normalizeMatrixTokenEnvelope(rawValue);
+}
+
+function hasMatrixTokenEnvelopes() {
+    return Boolean(matrixAccessTokenEnvelope || matrixRefreshTokenEnvelope);
+}
+
+function getFirstQueryParam(params, keys) {
+    for (const key of keys) {
+        const value = params.get(key);
+        if (value) return value;
+    }
+
+    return null;
+}
+
+function getHomeserverFromRoomId(value) {
+    if (!value || !/^![^:]+:[^:]+$/.test(value)) return null;
+
+    const domain = value.slice(value.indexOf(':') + 1).trim();
+    if (!domain) return null;
+
+    return /^https?:\/\//.test(domain) ? domain : `https://${domain}`;
+}
 
 function getMatrixAdapterUrl() {
     if (matrixAdapterUrl) return matrixAdapterUrl;
@@ -46,18 +102,28 @@ async function sendMatrixCommandViaAdapter(command) {
         throw new Error('Matrix adapter URL is not configured');
     }
 
+    const payload = {
+        roomId,
+        userId,
+        homeserverUrl,
+        command,
+        source: 'reminder-widget'
+    };
+
+    if (matrixAccessTokenEnvelope) {
+        payload.mx_access_token = matrixAccessTokenEnvelope;
+    }
+
+    if (matrixRefreshTokenEnvelope) {
+        payload.mx_refresh_token = matrixRefreshTokenEnvelope;
+    }
+
     const response = await fetch(adapterUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            roomId,
-            userId,
-            homeserverUrl,
-            command,
-            source: 'reminder-widget'
-        })
+        body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -192,27 +258,47 @@ function initStandaloneMatrixContext() {
         roomId: localStorage.getItem("matrixRoomId"),
         userId: localStorage.getItem("matrixUserId"),
         homeserverUrl: localStorage.getItem("matrixHomeserverUrl"),
-        accessToken: localStorage.getItem("matrixAccessToken")
+        accessToken: localStorage.getItem("matrixAccessToken"),
+        mxAccessToken: localStorage.getItem(MATRIX_ACCESS_TOKEN_STORAGE_KEY),
+        mxRefreshToken: localStorage.getItem(MATRIX_REFRESH_TOKEN_STORAGE_KEY)
     };
 
-    roomId = params.get("roomId") || storage.roomId || roomId;
-    userId = params.get("userId") || storage.userId || userId;
-    homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || storage.homeserverUrl || homeserverUrl;
-    matrixAdapterUrl = params.get('matrixAdapterUrl') || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
+    roomId = getFirstQueryParam(params, ["roomId", "room", "room_id"]) || storage.roomId || roomId;
+    userId = getFirstQueryParam(params, ["userId", "user", "user_id"]) || storage.userId || userId;
+    homeserverUrl = getFirstQueryParam(params, ["homeserver", "homeserverUrl", "homeserver_url", "hs"]) || storage.homeserverUrl || homeserverUrl;
+    matrixAdapterUrl = getFirstQueryParam(params, ["matrixAdapterUrl", "adapterUrl", "adapter_url"]) || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
+    matrixAccessTokenEnvelope = readMatrixTokenEnvelope(params, MATRIX_ACCESS_TOKEN_STORAGE_KEY, MATRIX_ACCESS_TOKEN_STORAGE_KEY, 'matrixAccessToken')
+        || normalizeMatrixTokenEnvelope(storage.mxAccessToken)
+        || normalizeMatrixTokenEnvelope(params.get('accessToken'));
+    matrixRefreshTokenEnvelope = readMatrixTokenEnvelope(params, MATRIX_REFRESH_TOKEN_STORAGE_KEY, MATRIX_REFRESH_TOKEN_STORAGE_KEY, 'matrixRefreshToken')
+        || normalizeMatrixTokenEnvelope(storage.mxRefreshToken)
+        || normalizeMatrixTokenEnvelope(params.get('refreshToken'));
     openIdToken = isMatrixAdapterMode() ? null : (params.get("accessToken") || storage.accessToken || openIdToken);
+
+    if (!homeserverUrl && roomId) {
+        homeserverUrl = getHomeserverFromRoomId(roomId);
+    }
 
     if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
         homeserverUrl = `https://${homeserverUrl}`;
     }
 
     if (!roomId || !homeserverUrl) {
-        throw new Error("Standalone mode requires roomId and homeserverUrl in the URL or localStorage");
+        console.warn("Standalone mode loaded without complete Matrix context; waiting for roomId and homeserverUrl.");
+        updateStatus("Standalone Matrix", "Missing roomId or homeserverUrl", false);
+        return false;
     }
 
     localStorage.setItem("matrixRoomId", roomId);
     localStorage.setItem("matrixHomeserverUrl", homeserverUrl);
     if (isMatrixAdapterMode()) {
         localStorage.setItem(MATRIX_ADAPTER_URL_STORAGE_KEY, matrixAdapterUrl);
+        if (matrixAccessTokenEnvelope) {
+            localStorage.setItem(MATRIX_ACCESS_TOKEN_STORAGE_KEY, JSON.stringify(matrixAccessTokenEnvelope));
+        }
+        if (matrixRefreshTokenEnvelope) {
+            localStorage.setItem(MATRIX_REFRESH_TOKEN_STORAGE_KEY, JSON.stringify(matrixRefreshTokenEnvelope));
+        }
     } else {
         localStorage.setItem("matrixAccessToken", openIdToken);
     }
@@ -220,7 +306,8 @@ function initStandaloneMatrixContext() {
         localStorage.setItem("matrixUserId", userId);
     }
 
-    console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
+    console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl, hasMatrixTokenEnvelopes: hasMatrixTokenEnvelopes() });
+    return true;
 }
 
 /**
@@ -233,10 +320,11 @@ async function initWidget() {
 
         // If opened directly in browser, use explicit standalone Matrix config.
         if (window.parent === window) {
-            initStandaloneMatrixContext();
-            isReady = true;
-            updateStatus("Standalone Matrix", "Using URL/manual Matrix config", true);
-            console.log("✓ Widget ready in standalone Matrix mode");
+            isReady = initStandaloneMatrixContext();
+            if (isReady) {
+                updateStatus("Standalone Matrix", "Using URL/localStorage Matrix config", true);
+                console.log("✓ Widget ready in standalone Matrix mode");
+            }
             return;
         }
 
@@ -768,41 +856,11 @@ async function sendReminderAtDateTime(dateTime, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
-    if (isMatrixAdapterMode()) {
-        return sendMatrixCommandViaAdapter(reminderCommand);
-    }
-
     if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
 
-    let token = openIdToken;
-    if (!token) {
-        throw new Error("No access token available");
-    }
-
-    const txnId = `${Date.now()}_${Math.random()}`;
-    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${roomId}/send/m.room.message/${txnId}`;
-
-
-    const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            msgtype: "m.text",
-            body: reminderCommand
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Matrix API error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log("✓ Reminder sent:", result.event_id);
+    return sendMatrixCommandViaAdapter(reminderCommand);
 }
 // locales, locale, timezone
 async function sendListReminder(name, time, list) {
@@ -1174,38 +1232,19 @@ async function sendCommandToMatrix(command) {
         throw new Error("Not connected to Matrix");
     }
 
-    if (isMatrixAdapterMode()) {
-        return sendMatrixCommandViaAdapter(command);
-    }
-
-    let token = openIdToken;
-    if (!token) {
-        throw new Error("No access token available");
-    }
-    const txnId = `${Date.now()}_${Math.random()}`;
-    const url = `${homeserverUrl}/_matrix/client/v3/rooms/${roomId}/send/m.room.message/${txnId}`;
-    const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            msgtype: "m.text",
-            body: command
-        })
-    });
-    if (!response.ok) {
-        throw new Error(`Matrix API error: ${response.status}`);
-    }
-    const result = await response.json();
-    console.log("✓ Command sent:", result.event_id);
+    return sendMatrixCommandViaAdapter(command);
 }
 
 // Add this utility to log the exact command and room info being sent
 function debugLogReminderCommand(command) {
     console.log('[DEBUG] Sending reminder command:', command);
     console.log('[DEBUG] roomId:', roomId, 'homeserverUrl:', homeserverUrl, 'userId:', userId);
+    if (hasMatrixTokenEnvelopes()) {
+        console.log('[DEBUG] Matrix token envelopes available:', {
+            hasAccessToken: Boolean(matrixAccessTokenEnvelope),
+            hasRefreshToken: Boolean(matrixRefreshTokenEnvelope)
+        });
+    }
 }
 
 // --- Listen for bot responses to reminders ---
