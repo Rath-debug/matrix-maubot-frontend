@@ -303,6 +303,42 @@ async function sendMatrixCommandViaAdapter(command) {
     throw new Error(`Matrix adapter endpoint not found. Tried: ${failures.join(', ')}`);
 }
 
+async function sendMatrixCommandViaWidgetApi(command) {
+    if (!roomId) {
+        throw new Error('Matrix room is not available');
+    }
+
+    const payload = {
+        room_id: roomId,
+        type: 'm.room.message',
+        content: {
+            msgtype: 'm.text',
+            body: command
+        }
+    };
+
+    const candidateActions = [
+        'send_event',
+        'org.matrix.msc2762.send_event',
+        'org.matrix.msc2762.send.event'
+    ];
+
+    let lastError = null;
+    for (const action of candidateActions) {
+        try {
+            const response = await widgetApi.sendRequest(action, payload);
+            if (response && response.response && response.response.error) {
+                throw new Error(String(response.response.error));
+            }
+            return response || {};
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Widget API send_event failed');
+}
+
 /**
  * PostMessage API using proper request/response correlation
  */
@@ -1052,11 +1088,7 @@ async function sendReminderAtDateTime(dateTime, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
-    if (!roomId || !homeserverUrl) {
-        throw new Error("Not connected to Matrix");
-    }
-
-    return sendMatrixCommandViaAdapter(reminderCommand);
+    return sendCommandToMatrix(reminderCommand);
 }
 // locales, locale, timezone
 async function sendListReminder(name, time, list) {
@@ -1424,7 +1456,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Send arbitrary command to Matrix room
 async function sendCommandToMatrix(command) {
-    if (!roomId || !homeserverUrl) {
+    if (!roomId) {
+        throw new Error("Not connected to Matrix");
+    }
+
+    // In extension mode, use Element's widget event capability first.
+    if (window.parent !== window) {
+        try {
+            return await sendMatrixCommandViaWidgetApi(command);
+        } catch (error) {
+            console.warn('[Widget] send_event failed, falling back to adapter:', error);
+        }
+    }
+
+    if (!homeserverUrl && !isMatrixAdapterMode()) {
         throw new Error("Not connected to Matrix");
     }
 
