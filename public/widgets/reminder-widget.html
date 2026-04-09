@@ -182,7 +182,8 @@
         .calendar-popup-close:focus-visible,
         .calendar-popup-clear:focus-visible,
         .calendar-popup-action:focus-visible,
-        .stepper-btn:focus-visible,
+        .timer-adjust-btn:focus-visible,
+        .timer-chip:focus-visible,
         .cmd-btn:focus-visible {
             outline: none;
             box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.18);
@@ -251,13 +252,6 @@
             letter-spacing: 0.01em;
         }
 
-        .stepper-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-        }
-
         .timer-input-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -285,22 +279,53 @@
         }
 
         .timer-step-card label {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 0.78rem;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.08em;
         }
 
-        .timer-number-input {
+        .timer-control-row {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr) 42px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .timer-adjust-btn {
+            width: 42px;
+            height: 42px;
+            margin: 0;
+            padding: 0;
+            border-radius: 14px;
+            border: 1px solid #dbe1ec;
+            background: #fff;
+            color: #c83a56;
+            font-size: 1.1rem;
+            line-height: 1;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .timer-adjust-btn:hover {
+            transform: translateY(-1px);
+            background: #fff7f9;
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.12);
+        }
+
+        .timer-adjust-btn:active {
+            transform: translateY(0);
+        }
+
+        .timer-value-input {
             width: 100%;
-            max-width: 104px;
-            margin: 0 auto;
+            max-width: none;
+            margin: 0;
             text-align: center;
             font-size: 1.35rem;
             font-weight: 700;
             letter-spacing: 0.04em;
-            padding: 12px 10px;
+            padding: 11px 10px;
             border-radius: 16px;
             border: 1px solid #e1e6f0;
             background:
@@ -309,8 +334,99 @@
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 18px rgba(15, 23, 42, 0.04);
         }
 
-        .timer-number-input:focus {
+        .timer-value-input:focus {
             transform: translateY(-1px);
+        }
+
+        .timer-number-input {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
+        .timer-number-input::-webkit-outer-spin-button,
+        .timer-number-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .timer-slider-wrap {
+            margin-top: 12px;
+            padding: 10px 12px 12px;
+            border: 1px solid #e8edf6;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.92) 100%);
+        }
+
+        .timer-slider-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .timer-slider-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8a8aa0;
+        }
+
+        .timer-slider-value {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #c83a56;
+        }
+
+        .timer-hour-slider {
+            width: 100%;
+            margin: 0;
+            accent-color: #f5576c;
+        }
+
+        .timer-slider-pips {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            color: #9ca3af;
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+        }
+
+        .timer-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .timer-chip {
+            width: auto;
+            margin: 0;
+            padding: 7px 11px;
+            border-radius: 999px;
+            border: 1px solid #ffd2dc;
+            background: #fff;
+            color: #d94663;
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            box-shadow: none;
+        }
+
+        .timer-chip:hover {
+            background: #fff7f9;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(245, 87, 108, 0.12);
+        }
+
+        .timer-chip.is-active {
+            background: linear-gradient(135deg, #ff4d6d 0%, #ff6b86 100%);
+            color: #fff;
+            border-color: #ff4d6d;
+            box-shadow: 0 10px 18px rgba(255, 77, 109, 0.18);
         }
 
         .timer-unit-note {
@@ -873,6 +989,17 @@
                 padding: 12px 10px 10px;
             }
 
+            .timer-control-row {
+                grid-template-columns: 38px minmax(0, 1fr) 38px;
+                gap: 6px;
+            }
+
+            .timer-adjust-btn {
+                width: 38px;
+                height: 38px;
+                border-radius: 12px;
+            }
+
             .timer-clock-face {
                 width: 180px;
                 height: 180px;
@@ -941,19 +1068,51 @@
                                 <div class="timer-step-card" data-pulse="low">
                                     <div class="timer-peripheral-line"></div>
                                     <span class="timer-field-flag">Hours</span>
-                                    <input type="number" id="timerHours" name="timerHours" class="timer-number-input" value="0" min="0" max="23" inputmode="numeric" />
+                                    <div class="timer-control-row">
+                                        <button type="button" class="timer-adjust-btn" data-target="timerHours" data-step="-1" aria-label="Decrease hours">−</button>
+                                        <input type="number" id="timerHours" name="timerHours" class="timer-number-input timer-value-input" value="0" min="0" max="23" step="1" inputmode="numeric" aria-label="Hours" />
+                                        <button type="button" class="timer-adjust-btn" data-target="timerHours" data-step="1" aria-label="Increase hours">+</button>
+                                    </div>
                                     <span class="timer-unit-note">0-23</span>
+                                    <div class="timer-slider-wrap">
+                                        <div class="timer-slider-label-row">
+                                            <span class="timer-slider-label">Day position</span>
+                                            <span class="timer-slider-value" id="timerHoursSliderValue">0h</span>
+                                        </div>
+                                        <input type="range" id="timerHoursSlider" class="timer-hour-slider" min="0" max="23" step="1" value="0" aria-label="Hours slider" />
+                                        <div class="timer-slider-pips" aria-hidden="true">
+                                            <span>0</span>
+                                            <span>6</span>
+                                            <span>12</span>
+                                            <span>18</span>
+                                            <span>23</span>
+                                        </div>
+                                        <div class="timer-chip-row" id="timerHourChips">
+                                            <button type="button" class="timer-chip" data-hours="1">1h</button>
+                                            <button type="button" class="timer-chip" data-hours="2">2h</button>
+                                            <button type="button" class="timer-chip" data-hours="4">4h</button>
+                                            <button type="button" class="timer-chip" data-hours="8">8h</button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="timer-step-card" data-pulse="mid">
                                     <div class="timer-peripheral-line"></div>
                                     <span class="timer-field-flag">Minutes</span>
-                                    <input type="number" id="timerMinutes" name="timerMinutes" class="timer-number-input" value="0" min="0" max="59" inputmode="numeric" />
+                                    <div class="timer-control-row">
+                                        <button type="button" class="timer-adjust-btn" data-target="timerMinutes" data-step="-1" aria-label="Decrease minutes">−</button>
+                                        <input type="number" id="timerMinutes" name="timerMinutes" class="timer-number-input timer-value-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Minutes" />
+                                        <button type="button" class="timer-adjust-btn" data-target="timerMinutes" data-step="1" aria-label="Increase minutes">+</button>
+                                    </div>
                                     <span class="timer-unit-note">0-59</span>
                                 </div>
                                 <div class="timer-step-card" data-pulse="high">
                                     <div class="timer-peripheral-line"></div>
                                     <span class="timer-field-flag">Seconds</span>
-                                    <input type="number" id="timerSeconds" name="timerSeconds" class="timer-number-input" value="0" min="0" max="59" inputmode="numeric" />
+                                    <div class="timer-control-row">
+                                        <button type="button" class="timer-adjust-btn" data-target="timerSeconds" data-step="-1" aria-label="Decrease seconds">−</button>
+                                        <input type="number" id="timerSeconds" name="timerSeconds" class="timer-number-input timer-value-input" value="0" min="0" max="59" step="1" inputmode="numeric" aria-label="Seconds" />
+                                        <button type="button" class="timer-adjust-btn" data-target="timerSeconds" data-step="1" aria-label="Increase seconds">+</button>
+                                    </div>
                                     <span class="timer-unit-note">0-59</span>
                                 </div>
                             </div>
@@ -1047,36 +1206,99 @@
     </div>
 
     <script>
-    // Timer stepper logic
+    // Timer control logic
     document.addEventListener('DOMContentLoaded', function() {
         function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
         const limits = { timerHours: [0, 23], timerMinutes: [0, 59], timerSeconds: [0, 59] };
-        const displays = {
-            timerHours: document.getElementById('timerHoursDisplay'),
-            timerMinutes: document.getElementById('timerMinutesDisplay'),
-            timerSeconds: document.getElementById('timerSecondsDisplay')
-        };
         const inputs = {
             timerHours: document.getElementById('timerHours'),
             timerMinutes: document.getElementById('timerMinutes'),
             timerSeconds: document.getElementById('timerSeconds')
         };
-        function updateDisplay(target) {
-            if (displays[target] && inputs[target]) {
-                displays[target].textContent = inputs[target].value;
-            }
+
+        const hoursSlider = document.getElementById('timerHoursSlider');
+        const hoursSliderValue = document.getElementById('timerHoursSliderValue');
+        const hourChips = document.querySelectorAll('#timerHourChips .timer-chip');
+
+        function getValue(target) {
+            const input = inputs[target];
+            if (!input) return 0;
+
+            const parsed = parseInt(String(input.value).trim(), 10);
+            if (Number.isNaN(parsed)) return 0;
+
+            const [min, max] = limits[target];
+            return clamp(parsed, min, max);
         }
-        document.querySelectorAll('.stepper-btn').forEach(btn => {
+
+        function setValue(target, value) {
+            const input = inputs[target];
+            if (!input) return 0;
+
+            const [min, max] = limits[target];
+            const bounded = clamp(Number.isFinite(value) ? value : 0, min, max);
+            input.value = String(bounded);
+
+            if (target === 'timerHours') {
+                if (hoursSlider) hoursSlider.value = String(bounded);
+                if (hoursSliderValue) hoursSliderValue.textContent = `${bounded}h`;
+                hourChips.forEach((chip) => {
+                    const chipHours = parseInt(chip.getAttribute('data-hours'), 10);
+                    chip.classList.toggle('is-active', chipHours === bounded);
+                });
+            }
+
+            return bounded;
+        }
+
+        document.querySelectorAll('.timer-adjust-btn').forEach((btn) => {
             btn.addEventListener('click', function() {
                 const target = btn.getAttribute('data-target');
-                const step = parseInt(btn.getAttribute('data-step'), 10);
-                let val = parseInt(inputs[target].value, 10) || 0;
-                val = clamp(val + step, limits[target][0], limits[target][1]);
-                inputs[target].value = val;
-                updateDisplay(target);
+                const step = parseInt(btn.getAttribute('data-step'), 10) || 0;
+                setValue(target, getValue(target) + step);
             });
         });
-        Object.keys(displays).forEach(updateDisplay);
+
+        Object.keys(inputs).forEach((target) => {
+            const input = inputs[target];
+            if (!input) return;
+
+            input.addEventListener('input', function() {
+                const raw = String(input.value).trim();
+                if (raw === '') {
+                    if (target === 'timerHours') setValue(target, 0);
+                    return;
+                }
+
+                const parsed = parseInt(raw, 10);
+                if (Number.isNaN(parsed)) {
+                    setValue(target, 0);
+                    return;
+                }
+
+                setValue(target, parsed);
+            });
+
+            input.addEventListener('blur', function() {
+                setValue(target, getValue(target));
+            });
+        });
+
+        if (hoursSlider) {
+            hoursSlider.addEventListener('input', function() {
+                setValue('timerHours', parseInt(hoursSlider.value, 10) || 0);
+            });
+        }
+
+        hourChips.forEach((chip) => {
+            chip.addEventListener('click', function() {
+                const chipHours = parseInt(chip.getAttribute('data-hours'), 10);
+                setValue('timerHours', chipHours);
+            });
+        });
+
+        Object.keys(inputs).forEach((target) => setValue(target, getValue(target)));
     });
     </script>
         <style>
