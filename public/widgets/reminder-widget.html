@@ -331,10 +331,19 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
             margin-bottom: 8px;
         }
 
+        .calendar-popup-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
         .calendar-popup-title {
+            flex: 1;
             font-size: 0.95rem;
             font-weight: 700;
             color: #333;
@@ -352,6 +361,27 @@
             cursor: pointer;
             font-size: 1rem;
             line-height: 1;
+        }
+
+        .calendar-popup-clear {
+            width: auto;
+            margin-top: 0;
+            padding: 0 10px;
+            height: 28px;
+            border: 1px solid #ffd5de;
+            border-radius: 6px;
+            background: #fff7f9;
+            color: #c23d59;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            box-shadow: none;
+        }
+
+        .calendar-popup-clear:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(245, 87, 108, 0.12);
         }
 
         .calendar-popup-list {
@@ -756,7 +786,10 @@
     <div id="calendarCountdownPopup" class="calendar-popup" aria-live="polite">
         <div class="calendar-popup-header">
             <span class="calendar-popup-title">Calendar Countdown</span>
-            <button type="button" id="calendarPopupCloseBtn" class="calendar-popup-close">×</button>
+            <div class="calendar-popup-header-actions">
+                <button type="button" id="calendarPopupClearBtn" class="calendar-popup-clear">Clear All</button>
+                <button type="button" id="calendarPopupCloseBtn" class="calendar-popup-close">×</button>
+            </div>
         </div>
         <ul id="calendarPopupList" class="calendar-popup-list"></ul>
     </div>

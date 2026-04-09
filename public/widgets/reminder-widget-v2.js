@@ -354,6 +354,16 @@ function removeCalendarReminder(reminderId) {
     return true;
 }
 
+function clearAllCalendarReminders() {
+    if (calendarReminders.length === 0) return false;
+
+    calendarReminders = [];
+    saveCalendarReminders();
+    clearCalendarReminderEditState();
+    refreshCalendarCountdownView();
+    return true;
+}
+
 function formatDateTime(dt) {
     const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
     return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
@@ -595,6 +605,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarForm = document.getElementById('calendarReminderForm');
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
+    const calendarPopupClearBtn = document.getElementById('calendarPopupClearBtn');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
     const calendarPopupList = document.getElementById('calendarPopupList');
     const calendarTimeInput = document.getElementById('calendarTime');
@@ -741,6 +752,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         throw new Error('Reminder no longer exists');
                     }
 
+                    await sendReminderAtDateTime(dateTime, calendarMessage);
+
                     calendarReminders[reminderIndex] = {
                         id: editingCalendarReminderId,
                         targetMs: targetDate.getTime(),
@@ -805,6 +818,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (action === 'reschedule') {
                 setCalendarReminderFormValues(reminder);
+            }
+        });
+    }
+
+    if (calendarPopupClearBtn) {
+        calendarPopupClearBtn.addEventListener('click', function() {
+            if (calendarReminders.length === 0) return;
+
+            const confirmed = window.confirm('Clear all upcoming reminders in this room?');
+            if (!confirmed) return;
+
+            clearAllCalendarReminders();
+            if (calendarStatus) {
+                calendarStatus.textContent = 'All reminders cleared';
+                calendarStatus.className = 'status-message show success';
             }
         });
     }
