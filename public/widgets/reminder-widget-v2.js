@@ -301,6 +301,179 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function padCalendarNumber(value) {
+    return String(value).padStart(2, '0');
+}
+
+function getCalendarOrdinalSuffix(day) {
+    const mod100 = day % 100;
+    if (mod100 >= 11 && mod100 <= 13) return 'th';
+
+    switch (day % 10) {
+        case 1:
+            return 'st';
+        case 2:
+            return 'nd';
+        case 3:
+            return 'rd';
+        default:
+            return 'th';
+    }
+}
+
+function parseCalendarDateValue(dateValue) {
+    if (!dateValue) return null;
+
+    const parts = String(dateValue).split('-').map((item) => parseInt(item, 10));
+    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+        return null;
+    }
+
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function formatCalendarFriendlyDate(dateValue) {
+    const date = parseCalendarDateValue(dateValue);
+    if (!date) return '';
+
+    const weekday = date.toLocaleDateString([], { weekday: 'long' });
+    const month = date.toLocaleDateString([], { month: 'long' });
+    const day = date.getDate();
+    return `${weekday}, ${month} ${day}${getCalendarOrdinalSuffix(day)}`;
+}
+
+function formatCalendarRelativeLabel(dateValue) {
+    const date = parseCalendarDateValue(dateValue);
+    if (!date) return 'Pick a future day to continue.';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((date.getTime() - today.getTime()) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays > 1) return `In ${diffDays} days`;
+    return `${Math.abs(diffDays)} days ago`;
+}
+
+function updateCalendarConfirmationLine(dateValue) {
+    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
+    const calendarSelectedDateMeta = document.getElementById('calendarSelectedDateMeta');
+
+    if (!calendarSelectedDateValue || !calendarSelectedDateMeta) return;
+
+    if (!dateValue) {
+        calendarSelectedDateValue.textContent = 'Select a date to get started.';
+        calendarSelectedDateMeta.textContent = 'Pick a future day to continue.';
+        return;
+    }
+
+    calendarSelectedDateValue.textContent = `Setting reminder for ${formatCalendarFriendlyDate(dateValue)}.`;
+    calendarSelectedDateMeta.textContent = formatCalendarRelativeLabel(dateValue);
+}
+
+function populateCalendarTimeSelects() {
+    const calendarHour = document.getElementById('calendarHour');
+    const calendarMinute = document.getElementById('calendarMinute');
+    const calendarPeriod = document.getElementById('calendarPeriod');
+
+    if (calendarHour && calendarHour.options.length === 0) {
+        for (let hour = 1; hour <= 12; hour++) {
+            const option = document.createElement('option');
+            option.value = String(hour);
+            option.textContent = padCalendarNumber(hour);
+            calendarHour.appendChild(option);
+        }
+    }
+
+    if (calendarMinute && calendarMinute.options.length === 0) {
+        for (let minute = 0; minute < 60; minute++) {
+            const option = document.createElement('option');
+            option.value = padCalendarNumber(minute);
+            option.textContent = padCalendarNumber(minute);
+            calendarMinute.appendChild(option);
+        }
+    }
+
+    if (calendarPeriod && calendarPeriod.options.length === 0) {
+        ['AM', 'PM'].forEach((period) => {
+            const option = document.createElement('option');
+            option.value = period;
+            option.textContent = period;
+            calendarPeriod.appendChild(option);
+        });
+    }
+}
+
+function getDefaultCalendarTimeParts() {
+    const future = new Date();
+    future.setMinutes(future.getMinutes() + 5);
+    future.setMinutes(Math.ceil(future.getMinutes() / 5) * 5, 0, 0);
+
+    const hour24 = future.getHours();
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) hour12 = 12;
+
+    return {
+        hour: String(hour12),
+        minute: padCalendarNumber(future.getMinutes()),
+        period: hour24 >= 12 ? 'PM' : 'AM'
+    };
+}
+
+function setCalendarTimeSelectValue(parts) {
+    const calendarHour = document.getElementById('calendarHour');
+    const calendarMinute = document.getElementById('calendarMinute');
+    const calendarPeriod = document.getElementById('calendarPeriod');
+
+    if (!calendarHour || !calendarMinute || !calendarPeriod || !parts) return;
+
+    calendarHour.value = parts.hour;
+    calendarMinute.value = parts.minute;
+    calendarPeriod.value = parts.period;
+}
+
+function setCalendarTimeFromDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
+        return;
+    }
+
+    const hour24 = date.getHours();
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) hour12 = 12;
+
+    setCalendarTimeSelectValue({
+        hour: String(hour12),
+        minute: padCalendarNumber(date.getMinutes()),
+        period: hour24 >= 12 ? 'PM' : 'AM'
+    });
+}
+
+function getCalendarTimeValue() {
+    const calendarHour = document.getElementById('calendarHour');
+    const calendarMinute = document.getElementById('calendarMinute');
+    const calendarPeriod = document.getElementById('calendarPeriod');
+
+    if (!calendarHour || !calendarMinute || !calendarPeriod) return '';
+
+    const hour12 = parseInt(calendarHour.value, 10);
+    const minute = parseInt(calendarMinute.value, 10);
+    const period = String(calendarPeriod.value || 'AM').toUpperCase();
+
+    if (Number.isNaN(hour12) || Number.isNaN(minute)) {
+        return '';
+    }
+
+    let hour24 = hour12 % 12;
+    if (period === 'PM') {
+        hour24 += 12;
+    }
+
+    return `${padCalendarNumber(hour24)}:${padCalendarNumber(minute)}`;
+}
+
 function clearCalendarReminderEditState() {
     editingCalendarReminderId = null;
 
@@ -312,8 +485,6 @@ function clearCalendarReminderEditState() {
 
 function setCalendarReminderFormValues(reminder) {
     const calendarSelectedDate = document.getElementById('calendarSelectedDate');
-    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
-    const calendarTime = document.getElementById('calendarTime');
     const calendarMessage = document.getElementById('calendarMessage');
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
@@ -323,13 +494,16 @@ function setCalendarReminderFormValues(reminder) {
     const reminderDate = new Date(reminder.targetMs);
     const pad = (value) => String(value).padStart(2, '0');
     const selectedDate = `${reminderDate.getFullYear()}-${pad(reminderDate.getMonth() + 1)}-${pad(reminderDate.getDate())}`;
-    const selectedTime = `${pad(reminderDate.getHours())}:${pad(reminderDate.getMinutes())}`;
 
     if (calendarSelectedDate) calendarSelectedDate.value = selectedDate;
-    if (calendarSelectedDateValue) calendarSelectedDateValue.textContent = selectedDate;
-    if (calendarTime) calendarTime.value = selectedTime;
+    updateCalendarConfirmationLine(selectedDate);
+    setCalendarTimeFromDate(reminderDate);
     if (calendarMessage) calendarMessage.value = reminder.message;
     if (calendarSetReminderBtn) calendarSetReminderBtn.textContent = 'Update Reminder';
+
+    if (typeof window.__setCalendarReminderDate === 'function') {
+        window.__setCalendarReminderDate(selectedDate, false);
+    }
 
     editingCalendarReminderId = reminder.id;
 
@@ -608,7 +782,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarPopupClearBtn = document.getElementById('calendarPopupClearBtn');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
     const calendarPopupList = document.getElementById('calendarPopupList');
-    const calendarTimeInput = document.getElementById('calendarTime');
+
+    populateCalendarTimeSelects();
+    setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
@@ -715,11 +891,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (calendarForm) {
         calendarForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const selectedDate = document.getElementById('calendarSelectedDate').value;
-            const calendarTime = document.getElementById('calendarTime').value;
+            const selectedCalendarDate = document.getElementById('calendarSelectedDate').value;
+            const calendarTime = getCalendarTimeValue();
             const calendarMessage = document.getElementById('calendarMessage').value.trim();
 
-            if (!selectedDate) {
+            if (!selectedCalendarDate) {
                 calendarStatus.textContent = 'Select date';
                 calendarStatus.className = 'status-message show error';
                 return;
@@ -731,14 +907,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const targetDate = new Date(`${selectedDate}T${calendarTime}`);
+            const targetDate = new Date(`${selectedCalendarDate}T${calendarTime}`);
             if (Number.isNaN(targetDate.getTime()) || targetDate.getTime() <= Date.now()) {
                 calendarStatus.textContent = 'Pick a future time';
                 calendarStatus.className = 'status-message show error';
                 return;
             }
 
-            const dateTime = `${selectedDate} ${calendarTime}`;
+            const dateTime = `${selectedCalendarDate} ${calendarTime}`;
             const isEditingReminder = editingCalendarReminderId !== null;
 
             try {
@@ -782,8 +958,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 calendarStatus.className = 'status-message show success';
 
                 calendarForm.reset();
-                document.getElementById('calendarSelectedDate').value = '';
-                document.getElementById('calendarSelectedDateValue').textContent = 'None';
+                setSelectedCalendarDate(null);
+                setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
                 clearCalendarReminderEditState();
             } catch (err) {
                 calendarStatus.textContent = 'Error: ' + err.message;
@@ -910,13 +1086,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevMonthBtn = document.getElementById('prevMonth');
     const nextMonthBtn = document.getElementById('nextMonth');
     const calendarSelectedDate = document.getElementById('calendarSelectedDate');
-    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
 
     function syncSelectedDateLabel() {
-        if (calendarSelectedDateValue) {
-            calendarSelectedDateValue.textContent = selectedDate || 'None';
-        }
+        updateCalendarConfirmationLine(selectedDate);
     }
+
+    function setSelectedCalendarDate(dateValue, shouldSyncInput = true) {
+        selectedDate = dateValue || null;
+        if (shouldSyncInput && calendarSelectedDate) {
+            calendarSelectedDate.value = dateValue || '';
+        }
+        syncSelectedDateLabel();
+        renderCalendar(currentMonth, currentYear);
+    }
+
+    window.__setCalendarReminderDate = setSelectedCalendarDate;
 
     function renderCalendar(month, year) {
         // Month label
@@ -930,6 +1114,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstDay = new Date(year, month, 1).getDay();
         // Days in month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
         // Build calendar grid
         let html = '<thead><tr>';
@@ -949,10 +1135,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<td class="calendar-day-cell"></td>';
                 } else {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+                    const currentDate = new Date(year, month, date);
+                    currentDate.setHours(0, 0, 0, 0);
+                    const isToday = currentDate.getTime() === today.getTime();
+                    const isPast = currentDate.getTime() < today.getTime();
                     let classes = 'calendar-day-btn';
+                    if (isToday) classes += ' is-today';
+                    if (isPast) classes += ' is-past';
                     if (selectedDate === dateStr) classes += ' is-selected';
+                    const ariaLabel = `${formatCalendarFriendlyDate(dateStr)}${isToday ? ', today' : ''}${isPast ? ', unavailable' : ''}`;
                     html += `<td class="calendar-day-cell">
-                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${dateStr}">
+                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${ariaLabel}"${isPast ? ' disabled aria-disabled="true" tabindex="-1"' : ''}>
                             ${date}
                         </button>
                     </td>`;
@@ -967,10 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add click listeners to date buttons
         document.querySelectorAll('.calendar-day-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                selectedDate = btn.getAttribute('data-date');
-                calendarSelectedDate.value = selectedDate;
-                syncSelectedDateLabel();
-                renderCalendar(currentMonth, currentYear);
+                setSelectedCalendarDate(btn.getAttribute('data-date'));
             });
         });
 
