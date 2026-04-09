@@ -734,6 +734,91 @@
             font-weight: 700;
         }
 
+        .calendar-confirm-dialog {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .calendar-confirm-dialog.is-open {
+            display: flex;
+        }
+
+        .calendar-confirm-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.42);
+            backdrop-filter: blur(8px);
+        }
+
+        .calendar-confirm-panel {
+            position: relative;
+            width: min(100%, 380px);
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid rgba(231, 233, 242, 0.96);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            padding: 18px;
+        }
+
+        .calendar-confirm-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #c23d59;
+            background: #fff1f4;
+            border: 1px solid #ffd5de;
+            border-radius: 999px;
+            padding: 4px 10px;
+            margin-bottom: 12px;
+        }
+
+        .calendar-confirm-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .calendar-confirm-message {
+            color: #5f6475;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .calendar-confirm-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .calendar-confirm-actions button {
+            width: 100%;
+            margin-top: 0;
+            box-shadow: none;
+            text-transform: none;
+            letter-spacing: 0.02em;
+        }
+
+        .calendar-confirm-cancel {
+            background: #fff;
+            color: #4b5563;
+            border: 1px solid #d8ddea;
+        }
+
+        .calendar-confirm-cancel:hover {
+            background: #f8fafc;
+            box-shadow: none;
+        }
+
         .calendar-card-shell {
             display: flex;
             flex-direction: column;
@@ -1056,7 +1141,7 @@
                     <button type="button" class="cmd-btn" data-cmd="!remind reschedule">Reschedule</button>
                 </div>
             </aside>
-            <div style="flex:1;min-width:0;">
+            <div class="widget-column">
                 <div id="widgetModeSwitch" class="widget-mode-switch" role="tablist" aria-label="Widget mode" data-active-mode="timer">
                     <span class="widget-mode-indicator" aria-hidden="true"></span>
                     <button type="button" id="widgetModeTimerBtn" class="widget-mode-button is-active" data-mode="timer" role="tab" aria-selected="true" aria-controls="timerSetupPanel">Timer</button>
@@ -1188,6 +1273,19 @@
         <ul id="calendarPopupList" class="calendar-popup-list"></ul>
     </div>
 
+    <div id="calendarConfirmDialog" class="calendar-confirm-dialog" aria-hidden="true">
+        <div class="calendar-confirm-backdrop" data-close-confirm="true"></div>
+        <div class="calendar-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="calendarConfirmTitle">
+            <div class="calendar-confirm-label">Confirm</div>
+            <div id="calendarConfirmTitle" class="calendar-confirm-title">Are you sure?</div>
+            <div id="calendarConfirmMessage" class="calendar-confirm-message"></div>
+            <div class="calendar-confirm-actions">
+                <button type="button" id="calendarConfirmCancel" class="calendar-confirm-cancel">Cancel</button>
+                <button type="button" id="calendarConfirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <script>
     // Timer control logic
     document.addEventListener('DOMContentLoaded', function() {
@@ -1253,15 +1351,22 @@
         <style>
                 .main-layout {
                     display: flex;
+                    flex-wrap: wrap;
                     gap: 24px;
                     align-items: flex-start;
                     justify-content: center;
                     margin: 0 auto 32px;
                     max-width: 1240px;
                 }
+                .widget-column {
+                    flex: 1 1 520px;
+                    min-width: 0;
+                }
                 .sidebar {
-                    min-width: 160px;
-                    max-width: 220px;
+                    flex: 0 1 240px;
+                    width: clamp(180px, 24vw, 240px);
+                    min-width: 180px;
+                    max-width: 240px;
                     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
                     padding: 18px 12px 18px 12px;
                     display: flex;
@@ -1292,14 +1397,17 @@
                     font-size: 0.85rem;
                     letter-spacing: 0.04em;
                     padding: 11px 12px 11px 12px;
-                    text-align: left;
+                    text-align: center;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    justify-content: center;
+                    gap: 8px;
                     transition: color var(--transition), border-color var(--transition), background var(--transition), transform var(--transition), box-shadow var(--transition);
-                    overflow: hidden;
-                    min-height: 38px;
+                    overflow: visible;
+                    white-space: normal;
+                    line-height: 1.15;
+                    min-height: 42px;
                     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
                 }
                 .sidebar-commands .cmd-btn:hover, .sidebar-commands .cmd-btn:focus {
@@ -1343,7 +1451,8 @@
                 @media (max-width: 900px) {
                     .main-layout {
                         flex-direction: column;
-                        gap: 0;
+                        flex-wrap: nowrap;
+                        gap: 14px;
                     }
                     .sidebar {
                         width: 100%;
@@ -1370,6 +1479,10 @@
                         flex: 1 1 120px;
                         min-width: 90px;
                         margin: 2px 0;
+                    }
+
+                    .widget-column {
+                        width: 100%;
                     }
 
                     .widget-container {
@@ -1400,6 +1513,10 @@
                         right: 10px;
                         bottom: 10px;
                         width: auto;
+                    }
+
+                    .widget-mode-switch {
+                        margin-top: 2px;
                     }
                 }
         </style>

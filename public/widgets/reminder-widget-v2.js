@@ -594,6 +594,54 @@ function hideCalendarCountdownPopup() {
     if (popup) popup.style.display = 'none';
 }
 
+function showCalendarConfirmDialog(message, confirmLabel) {
+    return new Promise((resolve) => {
+        const dialog = document.getElementById('calendarConfirmDialog');
+        const title = document.getElementById('calendarConfirmTitle');
+        const messageEl = document.getElementById('calendarConfirmMessage');
+        const cancelBtn = document.getElementById('calendarConfirmCancel');
+        const okBtn = document.getElementById('calendarConfirmOk');
+
+        if (!dialog || !title || !messageEl || !cancelBtn || !okBtn) {
+            resolve(true);
+            return;
+        }
+
+        const close = (result) => {
+            dialog.classList.remove('is-open');
+            dialog.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', onKeyDown);
+            cancelBtn.onclick = null;
+            okBtn.onclick = null;
+            dialog.onclick = null;
+            resolve(result);
+        };
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                close(false);
+            }
+        };
+
+        title.textContent = 'Are you sure?';
+        messageEl.textContent = message;
+        okBtn.textContent = confirmLabel || 'Confirm';
+
+        cancelBtn.onclick = () => close(false);
+        okBtn.onclick = () => close(true);
+        dialog.onclick = (event) => {
+            if (event.target && event.target.getAttribute('data-close-confirm') === 'true') {
+                close(false);
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        dialog.setAttribute('aria-hidden', 'false');
+        dialog.classList.add('is-open');
+        okBtn.focus();
+    });
+}
+
 function renderCalendarReminderCountdowns() {
     const calendarPopupList = document.getElementById('calendarPopupList');
     if (!calendarPopupList) return;
@@ -1016,7 +1064,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (calendarPopupList) {
-        calendarPopupList.addEventListener('click', function(event) {
+        calendarPopupList.addEventListener('click', async function(event) {
             const button = event.target.closest('button[data-action][data-reminder-id]');
             if (!button) return;
 
@@ -1026,7 +1074,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!reminder) return;
 
             if (action === 'delete') {
-                const confirmed = window.confirm(`Delete reminder "${reminder.message}"?`);
+                const confirmed = await showCalendarConfirmDialog(
+                    `Delete reminder "${reminder.message}"?`,
+                    'Delete'
+                );
                 if (!confirmed) return;
 
                 removeCalendarReminder(reminderId);
@@ -1044,10 +1095,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (calendarPopupClearBtn) {
-        calendarPopupClearBtn.addEventListener('click', function() {
+        calendarPopupClearBtn.addEventListener('click', async function() {
             if (calendarReminders.length === 0) return;
 
-            const confirmed = window.confirm('Clear all upcoming reminders in this room?');
+            const confirmed = await showCalendarConfirmDialog(
+                'Clear all upcoming reminders in this room?',
+                'Clear All'
+            );
             if (!confirmed) return;
 
             clearAllCalendarReminders();
