@@ -1461,9 +1461,10 @@
                         margin-bottom: 18px;
                         border-radius: 16px;
                         box-shadow: none;
-                        padding: 10px 0;
+                        padding: 12px;
                         align-items: center;
                         justify-content: center;
+                        position: static;
                     }
                     .sidebar-header {
                         display: none;
@@ -1476,8 +1477,9 @@
                         justify-content: center;
                     }
                     .sidebar-commands .cmd-btn {
-                        flex: 1 1 120px;
-                        min-width: 90px;
+                        flex: 1 1 160px;
+                        min-width: 0;
+                        width: 100%;
                         margin: 2px 0;
                     }
 
@@ -1490,14 +1492,21 @@
                     }
                 }
                 @media (max-width: 600px) {
-                    .sidebar-commands .cmd-btn {
-                        flex: 1 1 100px;
-                        min-width: 80px;
-                        font-size: 0.95em;
-                        padding: 7px 0;
-                    }
                     .sidebar {
-                        padding: 8px 0;
+                        padding: 10px;
+                    }
+
+                    .sidebar-commands {
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+
+                    .sidebar-commands .cmd-btn {
+                        flex: 1 1 auto;
+                        width: 100%;
+                        min-width: 0;
+                        font-size: 0.88rem;
+                        padding: 9px 12px;
                     }
 
                     .widget-header h2 {
