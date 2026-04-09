@@ -23,7 +23,11 @@ let matrixRefreshTokenEnvelope = null;
 const pendingRequests = new Map();
 let requestCounter = 0;
 const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
-const DEFAULT_MATRIX_ADAPTER_URL = '/api/matrix/command';
+const DEFAULT_MATRIX_ADAPTER_URL = '/api/reminder';
+const MATRIX_ADAPTER_FALLBACK_URLS = [
+    '/api/reminder',
+    '/api/matrix/command'
+];
 const MATRIX_ACCESS_TOKEN_STORAGE_KEY = 'mx_access_token';
 const MATRIX_REFRESH_TOKEN_STORAGE_KEY = 'mx_refresh_token';
 const MATRIX_SYNC_DB_CANDIDATES = [
@@ -242,8 +246,8 @@ function isMatrixAdapterMode() {
 }
 
 async function sendMatrixCommandViaAdapter(command) {
-    const adapterUrl = getMatrixAdapterUrl();
-    if (!adapterUrl) {
+    const primaryAdapterUrl = getMatrixAdapterUrl();
+    if (!primaryAdapterUrl) {
         throw new Error('Matrix adapter URL is not configured');
     }
 
@@ -272,20 +276,31 @@ async function sendMatrixCommandViaAdapter(command) {
         payload.mx_refresh_token = matrixRefreshTokenEnvelope;
     }
 
-    const response = await fetch(adapterUrl, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
+    const adapterUrls = Array.from(new Set([primaryAdapterUrl, ...MATRIX_ADAPTER_FALLBACK_URLS]));
+    const failures = [];
 
-    if (!response.ok) {
+    for (const adapterUrl of adapterUrls) {
+        const response = await fetch(adapterUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            return response.json().catch(() => ({}));
+        }
+
         const errorText = await response.text().catch(() => '');
-        throw new Error(errorText || `Matrix adapter error: ${response.status}`);
+        failures.push(`${adapterUrl} -> ${response.status}${errorText ? ` (${errorText})` : ''}`);
+
+        if (response.status !== 404) {
+            throw new Error(errorText || `Matrix adapter error: ${response.status}`);
+        }
     }
 
-    return response.json().catch(() => ({}));
+    throw new Error(`Matrix adapter endpoint not found. Tried: ${failures.join(', ')}`);
 }
 
 /**
