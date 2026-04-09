@@ -291,6 +291,7 @@ let calendarCountdownInterval = null;
 let isCalendarPopupDismissed = false;
 let editingCalendarReminderId = null;
 const CALENDAR_REMINDERS_STORAGE_KEY = 'matrixCalendarReminders';
+const WIDGET_MODE_STORAGE_KEY = 'matrixReminderWidgetMode';
 
 function escapeHtml(value) {
     return String(value)
@@ -782,6 +783,50 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarPopupClearBtn = document.getElementById('calendarPopupClearBtn');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
     const calendarPopupList = document.getElementById('calendarPopupList');
+    const widgetModeSwitch = document.getElementById('widgetModeSwitch');
+    const widgetModeButtons = Array.from(document.querySelectorAll('.widget-mode-button'));
+    const widgetModePanels = Array.from(document.querySelectorAll('[data-mode-panel]'));
+
+    function setWidgetMode(mode) {
+        const normalizedMode = mode === 'calendar' ? 'calendar' : 'timer';
+
+        if (widgetModeSwitch) {
+            widgetModeSwitch.setAttribute('data-active-mode', normalizedMode);
+        }
+
+        widgetModeButtons.forEach((button) => {
+            const isActive = button.getAttribute('data-mode') === normalizedMode;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        widgetModePanels.forEach((panel) => {
+            const panelMode = panel.getAttribute('data-mode-panel');
+            panel.classList.toggle('is-hidden-by-mode', panelMode !== normalizedMode);
+        });
+
+        try {
+            localStorage.setItem(WIDGET_MODE_STORAGE_KEY, normalizedMode);
+        } catch (error) {
+            console.warn('[Widget] Failed to persist widget mode:', error);
+        }
+    }
+
+    widgetModeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            setWidgetMode(button.getAttribute('data-mode'));
+        });
+    });
+
+    const initialMode = (() => {
+        try {
+            return localStorage.getItem(WIDGET_MODE_STORAGE_KEY) || 'timer';
+        } catch (error) {
+            return 'timer';
+        }
+    })();
+
+    setWidgetMode(initialMode);
 
     populateCalendarTimeSelects();
     setCalendarTimeSelectValue(getDefaultCalendarTimeParts());
