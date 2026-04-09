@@ -268,49 +268,37 @@
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e5e9f2;
             border-radius: 18px;
-            padding: 14px 10px 12px;
+            padding: 12px 12px 12px;
             text-align: center;
             box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
         }
 
         .timer-step-card label {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 0.9rem;
             color: #0f172a;
         }
 
-        .timer-stepper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .stepper-btn {
-            background: #f8fafc;
-            border: 1px solid #d8dee9;
-            border-radius: 12px;
-            width: 34px;
-            height: 30px;
-            font-size: 0.95rem;
-            color: #d94663;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-            user-select: none;
-        }
-
-        .stepper-btn:hover {
-            background: #fff1f4;
-            box-shadow: 0 6px 14px rgba(245, 87, 108, 0.12);
-        }
-
-        .stepper-value {
-            font-size: 1.35rem;
-            font-weight: bold;
-            width: 40px;
+        .timer-number-input {
+            width: 100%;
+            max-width: 100px;
+            margin: 0 auto;
             text-align: center;
-            margin: 0;
-            color: #111827;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            padding: 11px 10px;
+            border-radius: 14px;
+        }
+
+        .timer-unit-note {
+            display: block;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: #8a8aa0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
         }
 
         .timer-summary {
@@ -758,7 +746,8 @@
             }
 
             .timer-input-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
             }
 
             .timer-clock-face {
@@ -772,6 +761,11 @@
 
             .timer-actions button {
                 flex-basis: 100%;
+            }
+
+            .timer-number-input {
+                max-width: 100%;
+                font-size: 1.05rem;
             }
 
             button {
@@ -819,32 +813,20 @@
                             <div class="form-group timer-input-grid" id="timerInputGroup">
                                 <div class="timer-step-card">
                                     <label for="timerHours">Hours</label>
-                                    <div class="timer-stepper">
-                                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="1">▲</button>
-                                        <div id="timerHoursDisplay" class="stepper-value">0</div>
-                                        <button type="button" class="stepper-btn" data-target="timerHours" data-step="-1">▼</button>
-                                    </div>
+                                    <input type="number" id="timerHours" name="timerHours" class="timer-number-input" value="0" min="0" max="23" inputmode="numeric" />
+                                    <span class="timer-unit-note">0-23</span>
                                 </div>
                                 <div class="timer-step-card">
                                     <label for="timerMinutes">Minutes</label>
-                                    <div class="timer-stepper">
-                                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="1">▲</button>
-                                        <div id="timerMinutesDisplay" class="stepper-value">0</div>
-                                        <button type="button" class="stepper-btn" data-target="timerMinutes" data-step="-1">▼</button>
-                                    </div>
+                                    <input type="number" id="timerMinutes" name="timerMinutes" class="timer-number-input" value="0" min="0" max="59" inputmode="numeric" />
+                                    <span class="timer-unit-note">0-59</span>
                                 </div>
                                 <div class="timer-step-card">
                                     <label for="timerSeconds">Seconds</label>
-                                    <div class="timer-stepper">
-                                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="1">▲</button>
-                                        <div id="timerSecondsDisplay" class="stepper-value">0</div>
-                                        <button type="button" class="stepper-btn" data-target="timerSeconds" data-step="-1">▼</button>
-                                    </div>
+                                    <input type="number" id="timerSeconds" name="timerSeconds" class="timer-number-input" value="0" min="0" max="59" inputmode="numeric" />
+                                    <span class="timer-unit-note">0-59</span>
                                 </div>
                             </div>
-                            <input type="hidden" id="timerHours" value="0" />
-                            <input type="hidden" id="timerMinutes" value="0" />
-                            <input type="hidden" id="timerSeconds" value="0" />
                             <div class="form-group">
                                 <label for="timerMessage">Message:</label>
                                 <input type="text" id="timerMessage" name="timerMessage" placeholder="e.g., Great job! Take a break ☕" maxlength="120" style="width:100%;" />
