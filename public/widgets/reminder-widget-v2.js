@@ -92,6 +92,23 @@ function getHomeserverFromUserId(value) {
     return /^https?:\/\//.test(domain) ? domain : `https://${domain}`;
 }
 
+function getRoomIdFromLocationHash() {
+    const hash = decodeURIComponent(window.location.hash || '');
+    const match = hash.match(/![^:\s/]+:[^\s/?#&]+/);
+    return match ? match[0] : null;
+}
+
+function getElementHomeserverFromStorage() {
+    return localStorage.getItem('mx_hs_url')
+        || localStorage.getItem('mx_base_url')
+        || localStorage.getItem('mx_homeserver_url');
+}
+
+function getElementUserIdFromStorage() {
+    return localStorage.getItem('mx_user_id')
+        || localStorage.getItem('mx_userid');
+}
+
 function openIndexedDb(databaseName) {
     return new Promise((resolve, reject) => {
         if (!window.indexedDB) {
@@ -256,7 +273,7 @@ async function sendMatrixCommandViaAdapter(command) {
     }
 
     const response = await fetch(adapterUrl, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -397,12 +414,26 @@ async function initStandaloneMatrixContext() {
         homeserverUrl: localStorage.getItem("matrixHomeserverUrl"),
         accessToken: localStorage.getItem("matrixAccessToken"),
         mxAccessToken: localStorage.getItem(MATRIX_ACCESS_TOKEN_STORAGE_KEY),
-        mxRefreshToken: localStorage.getItem(MATRIX_REFRESH_TOKEN_STORAGE_KEY)
+        mxRefreshToken: localStorage.getItem(MATRIX_REFRESH_TOKEN_STORAGE_KEY),
+        elementUserId: getElementUserIdFromStorage(),
+        elementHomeserverUrl: getElementHomeserverFromStorage()
     };
 
-    roomId = getFirstQueryParam(params, ["roomId", "room", "room_id"]) || window.MATRIX_ROOM_ID || storage.roomId || roomId;
-    userId = getFirstQueryParam(params, ["userId", "user", "user_id"]) || window.MATRIX_USER_ID || storage.userId || userId;
-    homeserverUrl = getFirstQueryParam(params, ["homeserver", "homeserverUrl", "homeserver_url", "hs"]) || window.MATRIX_HOMESERVER_URL || storage.homeserverUrl || homeserverUrl;
+    roomId = getFirstQueryParam(params, ["roomId", "room", "room_id"])
+        || window.MATRIX_ROOM_ID
+        || storage.roomId
+        || getRoomIdFromLocationHash()
+        || roomId;
+    userId = getFirstQueryParam(params, ["userId", "user", "user_id"])
+        || window.MATRIX_USER_ID
+        || storage.userId
+        || storage.elementUserId
+        || userId;
+    homeserverUrl = getFirstQueryParam(params, ["homeserver", "homeserverUrl", "homeserver_url", "hs"])
+        || window.MATRIX_HOMESERVER_URL
+        || storage.homeserverUrl
+        || storage.elementHomeserverUrl
+        || homeserverUrl;
     matrixAdapterUrl = getFirstQueryParam(params, ["matrixAdapterUrl", "adapterUrl", "adapter_url"]) || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
     matrixAccessTokenEnvelope = readMatrixTokenEnvelope(params, MATRIX_ACCESS_TOKEN_STORAGE_KEY, MATRIX_ACCESS_TOKEN_STORAGE_KEY, 'matrixAccessToken')
         || normalizeMatrixTokenEnvelope(storage.mxAccessToken)
@@ -424,6 +455,10 @@ async function initStandaloneMatrixContext() {
 
     if (!homeserverUrl && roomId) {
         homeserverUrl = getHomeserverFromRoomId(roomId);
+    }
+
+    if (!homeserverUrl && userId) {
+        homeserverUrl = getHomeserverFromUserId(userId);
     }
 
     if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
