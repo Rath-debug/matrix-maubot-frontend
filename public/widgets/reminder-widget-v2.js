@@ -18,17 +18,12 @@ let isReady = false;
 let matrixAdapterUrl = null;
 let matrixAccessTokenEnvelope = null;
 let matrixRefreshTokenEnvelope = null;
-let activeWidgetId = null;
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
 let requestCounter = 0;
 const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
-const DEFAULT_MATRIX_ADAPTER_URL = '/api/reminder';
-const MATRIX_ADAPTER_FALLBACK_URLS = [
-    '/api/reminder',
-    '/api/matrix/command'
-];
+const DEFAULT_MATRIX_ADAPTER_URL = '/api/matrix/command';
 const MATRIX_ACCESS_TOKEN_STORAGE_KEY = 'mx_access_token';
 const MATRIX_REFRESH_TOKEN_STORAGE_KEY = 'mx_refresh_token';
 const MATRIX_SYNC_DB_CANDIDATES = [
@@ -247,8 +242,8 @@ function isMatrixAdapterMode() {
 }
 
 async function sendMatrixCommandViaAdapter(command) {
-    const primaryAdapterUrl = getMatrixAdapterUrl();
-    if (!primaryAdapterUrl) {
+    const adapterUrl = getMatrixAdapterUrl();
+    if (!adapterUrl) {
         throw new Error('Matrix adapter URL is not configured');
     }
 
@@ -277,74 +272,20 @@ async function sendMatrixCommandViaAdapter(command) {
         payload.mx_refresh_token = matrixRefreshTokenEnvelope;
     }
 
-    const adapterUrls = Array.from(new Set([primaryAdapterUrl, ...MATRIX_ADAPTER_FALLBACK_URLS]));
-    const failures = [];
+    const response = await fetch(adapterUrl, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
 
-    for (const adapterUrl of adapterUrls) {
-        const response = await fetch(adapterUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            return response.json().catch(() => ({}));
-        }
-
+    if (!response.ok) {
         const errorText = await response.text().catch(() => '');
-        failures.push(`${adapterUrl} -> ${response.status}${errorText ? ` (${errorText})` : ''}`);
-
-        if (response.status !== 404) {
-            throw new Error(errorText || `Matrix adapter error: ${response.status}`);
-        }
+        throw new Error(errorText || `Matrix adapter error: ${response.status}`);
     }
 
-    throw new Error(`Matrix adapter endpoint not found. Tried: ${failures.join(', ')}`);
-}
-
-async function sendMatrixCommandViaWidgetApi(command) {
-    const content = {
-        msgtype: 'm.text',
-        body: command
-    };
-
-    const payloadVariants = [];
-    payloadVariants.push({ type: 'm.room.message', content });
-    if (roomId) {
-        payloadVariants.push({ room_id: roomId, type: 'm.room.message', content });
-        payloadVariants.push({ roomId: roomId, type: 'm.room.message', content });
-    }
-
-    const candidateActions = [
-        'send_event',
-        'org.matrix.msc2762.send_event',
-        'org.matrix.msc2762.send.event'
-    ];
-
-    let lastError = new Error('Widget API send_event failed');
-    for (const payload of payloadVariants) {
-        for (const action of candidateActions) {
-            try {
-                const response = await widgetApi.sendRequest(action, payload, activeWidgetId);
-                if (!response) {
-                    throw new Error('No response from widget API');
-                }
-                if (response.response && response.response.error) {
-                    throw new Error(String(response.response.error));
-                }
-                if (response.data && response.data.error) {
-                    throw new Error(String(response.data.error));
-                }
-                return response || {};
-            } catch (error) {
-                lastError = error;
-            }
-        }
-    }
-
-    throw lastError;
+    return response.json().catch(() => ({}));
 }
 
 /**
@@ -582,7 +523,6 @@ async function initWidget() {
                 if (msg.action === "capabilities") {
                     capabilitiesRequestId = msg.requestId;
                     widgetId = msg.widgetId;
-                    activeWidgetId = msg.widgetId || activeWidgetId;
                     clearTimeout(timeout);
                     console.log("✓ Received capabilities from Element");
                     console.log("  requestId:", capabilitiesRequestId);
@@ -640,26 +580,11 @@ async function initWidget() {
 
             console.log("✓ Extracted context from widgetId:", { roomId, userId, homeserverUrl });
         } else {
-            console.warn(`[Init] Could not parse widgetId format: ${decodedWidgetId}`);
+            throw new Error(`Could not parse widgetId format: ${decodedWidgetId}`);
+        }
 
-            roomId = roomId
-                || getFirstQueryParam(new URLSearchParams(window.location.search), ["roomId", "room", "room_id"])
-                || getRoomIdFromLocationHash()
-                || localStorage.getItem("matrixRoomId")
-                || null;
-
-            userId = userId
-                || getFirstQueryParam(new URLSearchParams(window.location.search), ["userId", "user", "user_id"])
-                || getElementUserIdFromStorage()
-                || localStorage.getItem("matrixUserId")
-                || null;
-
-            homeserverUrl = homeserverUrl
-                || getElementHomeserverFromStorage()
-                || localStorage.getItem("matrixHomeserverUrl")
-                || getHomeserverFromRoomId(roomId)
-                || getHomeserverFromUserId(userId)
-                || null;
+        if (!roomId || !userId) {
+            throw new Error("Missing room or user context");
         }
 
         isReady = true;
@@ -1112,7 +1037,11 @@ async function sendReminderAtDateTime(dateTime, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
-    return sendCommandToMatrix(reminderCommand);
+    if (!roomId || !homeserverUrl) {
+        throw new Error("Not connected to Matrix");
+    }
+
+    return sendMatrixCommandViaAdapter(reminderCommand);
 }
 // locales, locale, timezone
 async function sendListReminder(name, time, list) {
@@ -1480,20 +1409,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Send arbitrary command to Matrix room
 async function sendCommandToMatrix(command) {
-    // In extension mode, use Element's widget event capability first.
-    if (window.parent !== window) {
-        try {
-            return await sendMatrixCommandViaWidgetApi(command);
-        } catch (error) {
-            console.warn('[Widget] send_event failed, falling back to adapter:', error);
-        }
-    }
-
-    if (!roomId) {
-        throw new Error("Not connected to Matrix");
-    }
-
-    if (!homeserverUrl && !isMatrixAdapterMode()) {
+    if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
 
