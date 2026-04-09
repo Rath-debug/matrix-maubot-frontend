@@ -18,6 +18,7 @@ let isReady = false;
 let matrixAdapterUrl = null;
 let matrixAccessTokenEnvelope = null;
 let matrixRefreshTokenEnvelope = null;
+let activeWidgetId = null;
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
@@ -304,18 +305,17 @@ async function sendMatrixCommandViaAdapter(command) {
 }
 
 async function sendMatrixCommandViaWidgetApi(command) {
-    if (!roomId) {
-        throw new Error('Matrix room is not available');
-    }
-
-    const payload = {
-        room_id: roomId,
-        type: 'm.room.message',
-        content: {
-            msgtype: 'm.text',
-            body: command
-        }
+    const content = {
+        msgtype: 'm.text',
+        body: command
     };
+
+    const payloadVariants = [];
+    payloadVariants.push({ type: 'm.room.message', content });
+    if (roomId) {
+        payloadVariants.push({ room_id: roomId, type: 'm.room.message', content });
+        payloadVariants.push({ roomId: roomId, type: 'm.room.message', content });
+    }
 
     const candidateActions = [
         'send_event',
@@ -323,20 +323,28 @@ async function sendMatrixCommandViaWidgetApi(command) {
         'org.matrix.msc2762.send.event'
     ];
 
-    let lastError = null;
-    for (const action of candidateActions) {
-        try {
-            const response = await widgetApi.sendRequest(action, payload);
-            if (response && response.response && response.response.error) {
-                throw new Error(String(response.response.error));
+    let lastError = new Error('Widget API send_event failed');
+    for (const payload of payloadVariants) {
+        for (const action of candidateActions) {
+            try {
+                const response = await widgetApi.sendRequest(action, payload, activeWidgetId);
+                if (!response) {
+                    throw new Error('No response from widget API');
+                }
+                if (response.response && response.response.error) {
+                    throw new Error(String(response.response.error));
+                }
+                if (response.data && response.data.error) {
+                    throw new Error(String(response.data.error));
+                }
+                return response || {};
+            } catch (error) {
+                lastError = error;
             }
-            return response || {};
-        } catch (error) {
-            lastError = error;
         }
     }
 
-    throw lastError || new Error('Widget API send_event failed');
+    throw lastError;
 }
 
 /**
@@ -574,6 +582,7 @@ async function initWidget() {
                 if (msg.action === "capabilities") {
                     capabilitiesRequestId = msg.requestId;
                     widgetId = msg.widgetId;
+                    activeWidgetId = msg.widgetId || activeWidgetId;
                     clearTimeout(timeout);
                     console.log("✓ Received capabilities from Element");
                     console.log("  requestId:", capabilitiesRequestId);
@@ -631,11 +640,26 @@ async function initWidget() {
 
             console.log("✓ Extracted context from widgetId:", { roomId, userId, homeserverUrl });
         } else {
-            throw new Error(`Could not parse widgetId format: ${decodedWidgetId}`);
-        }
+            console.warn(`[Init] Could not parse widgetId format: ${decodedWidgetId}`);
 
-        if (!roomId || !userId) {
-            throw new Error("Missing room or user context");
+            roomId = roomId
+                || getFirstQueryParam(new URLSearchParams(window.location.search), ["roomId", "room", "room_id"])
+                || getRoomIdFromLocationHash()
+                || localStorage.getItem("matrixRoomId")
+                || null;
+
+            userId = userId
+                || getFirstQueryParam(new URLSearchParams(window.location.search), ["userId", "user", "user_id"])
+                || getElementUserIdFromStorage()
+                || localStorage.getItem("matrixUserId")
+                || null;
+
+            homeserverUrl = homeserverUrl
+                || getElementHomeserverFromStorage()
+                || localStorage.getItem("matrixHomeserverUrl")
+                || getHomeserverFromRoomId(roomId)
+                || getHomeserverFromUserId(userId)
+                || null;
         }
 
         isReady = true;
@@ -1456,10 +1480,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Send arbitrary command to Matrix room
 async function sendCommandToMatrix(command) {
-    if (!roomId) {
-        throw new Error("Not connected to Matrix");
-    }
-
     // In extension mode, use Element's widget event capability first.
     if (window.parent !== window) {
         try {
@@ -1467,6 +1487,10 @@ async function sendCommandToMatrix(command) {
         } catch (error) {
             console.warn('[Widget] send_event failed, falling back to adapter:', error);
         }
+    }
+
+    if (!roomId) {
+        throw new Error("Not connected to Matrix");
     }
 
     if (!homeserverUrl && !isMatrixAdapterMode()) {
