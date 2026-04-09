@@ -15,10 +15,57 @@ let roomId;
 let userId;
 let homeserverUrl;
 let isReady = false;
+let matrixAdapterUrl = null;
 
 // Track pending requests by requestId
 const pendingRequests = new Map();
 let requestCounter = 0;
+const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
+
+function getMatrixAdapterUrl() {
+    if (matrixAdapterUrl) return matrixAdapterUrl;
+
+    const params = new URLSearchParams(window.location.search);
+    const configuredUrl = params.get('matrixAdapterUrl')
+        || window.MATRIX_ADAPTER_URL
+        || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY)
+        || '';
+
+    matrixAdapterUrl = configuredUrl.trim();
+    return matrixAdapterUrl;
+}
+
+function isMatrixAdapterMode() {
+    return Boolean(getMatrixAdapterUrl());
+}
+
+async function sendMatrixCommandViaAdapter(command) {
+    const adapterUrl = getMatrixAdapterUrl();
+    if (!adapterUrl) {
+        throw new Error('Matrix adapter URL is not configured');
+    }
+
+    const response = await fetch(adapterUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            roomId,
+            userId,
+            homeserverUrl,
+            command,
+            source: 'reminder-widget'
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(errorText || `Matrix adapter error: ${response.status}`);
+    }
+
+    return response.json().catch(() => ({}));
+}
 
 /**
  * PostMessage API using proper request/response correlation
@@ -150,7 +197,8 @@ function initStandaloneMatrixContext() {
     roomId = params.get("roomId") || storage.roomId || roomId;
     userId = params.get("userId") || storage.userId || userId;
     homeserverUrl = params.get("homeserver") || params.get("homeserverUrl") || storage.homeserverUrl || homeserverUrl;
-    openIdToken = params.get("accessToken") || window.MATRIX_ACCESS_TOKEN || storage.accessToken || openIdToken;
+    matrixAdapterUrl = params.get('matrixAdapterUrl') || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
+    openIdToken = isMatrixAdapterMode() ? null : (params.get("accessToken") || storage.accessToken || openIdToken);
 
     if (!roomId) {
         roomId = window.prompt("Enter Matrix Room ID (example: !abc123:matrix.org):", "") || "";
@@ -158,7 +206,7 @@ function initStandaloneMatrixContext() {
     if (!homeserverUrl) {
         homeserverUrl = window.prompt("Enter Matrix homeserver URL (example: https://matrix.org):", "") || "";
     }
-    if (!openIdToken) {
+    if (!isMatrixAdapterMode() && !openIdToken) {
         openIdToken = window.prompt("Enter Matrix access token:", "") || "";
     }
     if (!userId) {
@@ -169,13 +217,17 @@ function initStandaloneMatrixContext() {
         homeserverUrl = `https://${homeserverUrl}`;
     }
 
-    if (!roomId || !homeserverUrl || !openIdToken) {
-        throw new Error("Standalone mode requires roomId, homeserver, and accessToken");
+    if (!roomId || !homeserverUrl || (!isMatrixAdapterMode() && !openIdToken)) {
+        throw new Error("Standalone mode requires roomId, homeserver, and either accessToken or matrixAdapterUrl");
     }
 
     localStorage.setItem("matrixRoomId", roomId);
     localStorage.setItem("matrixHomeserverUrl", homeserverUrl);
-    localStorage.setItem("matrixAccessToken", openIdToken);
+    if (isMatrixAdapterMode()) {
+        localStorage.setItem(MATRIX_ADAPTER_URL_STORAGE_KEY, matrixAdapterUrl);
+    } else {
+        localStorage.setItem("matrixAccessToken", openIdToken);
+    }
     if (userId) {
         localStorage.setItem("matrixUserId", userId);
     }
@@ -241,15 +293,19 @@ async function initWidget() {
             }
         }, "*");
 
-        // Step 3: Request OpenID token
-        console.log("[Init] Requesting OpenID token...");
-        const tokenResponse = await widgetApi.sendRequest("org.matrix.msc2931.openid_credentials", {}, widgetId);
-
-        if (tokenResponse && tokenResponse.data?.access_token) {
-            openIdToken = tokenResponse.data.access_token;
-            console.log("✓ Got OpenID token from Element!");
+        if (isMatrixAdapterMode()) {
+            console.log("[Init] Matrix adapter mode enabled; skipping OpenID token request.");
         } else {
-            console.warn("⚠️  No token response from Element, will use guest auth");
+            // Step 3: Request OpenID token
+            console.log("[Init] Requesting OpenID token...");
+            const tokenResponse = await widgetApi.sendRequest("org.matrix.msc2931.openid_credentials", {}, widgetId);
+
+            if (tokenResponse && tokenResponse.data?.access_token) {
+                openIdToken = tokenResponse.data.access_token;
+                console.log("✓ Got OpenID token from Element!");
+            } else {
+                console.warn("⚠️  No token response from Element, will use guest auth");
+            }
         }
 
         // Step 4: Extract context from widgetId (from Element's capabilities message)
@@ -724,11 +780,15 @@ async function sendReminderAtDateTime(dateTime, message) {
 async function sendReminderViaMatrix(duration, unit, message) {
     const reminderCommand = `!remind ${duration}${unit} ${message.trim()}`;
 
+    if (isMatrixAdapterMode()) {
+        return sendMatrixCommandViaAdapter(reminderCommand);
+    }
+
     if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
 
-    let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
+    let token = openIdToken;
     if (!token) {
         throw new Error("No access token available");
     }
@@ -1125,7 +1185,12 @@ async function sendCommandToMatrix(command) {
     if (!roomId || !homeserverUrl) {
         throw new Error("Not connected to Matrix");
     }
-    let token = window.MATRIX_ACCESS_TOKEN || openIdToken;
+
+    if (isMatrixAdapterMode()) {
+        return sendMatrixCommandViaAdapter(command);
+    }
+
+    let token = openIdToken;
     if (!token) {
         throw new Error("No access token available");
     }
