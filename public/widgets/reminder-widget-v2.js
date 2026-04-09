@@ -289,7 +289,70 @@ let activeTimer = null;
 let timerWidgetInterval = null;
 let calendarCountdownInterval = null;
 let isCalendarPopupDismissed = false;
+let editingCalendarReminderId = null;
 const CALENDAR_REMINDERS_STORAGE_KEY = 'matrixCalendarReminders';
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function clearCalendarReminderEditState() {
+    editingCalendarReminderId = null;
+
+    const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
+    if (calendarSetReminderBtn) {
+        calendarSetReminderBtn.textContent = 'Set Reminder';
+    }
+}
+
+function setCalendarReminderFormValues(reminder) {
+    const calendarSelectedDate = document.getElementById('calendarSelectedDate');
+    const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
+    const calendarTime = document.getElementById('calendarTime');
+    const calendarMessage = document.getElementById('calendarMessage');
+    const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
+    const calendarStatus = document.getElementById('calendarStatusMessage');
+
+    if (!reminder) return;
+
+    const reminderDate = new Date(reminder.targetMs);
+    const pad = (value) => String(value).padStart(2, '0');
+    const selectedDate = `${reminderDate.getFullYear()}-${pad(reminderDate.getMonth() + 1)}-${pad(reminderDate.getDate())}`;
+    const selectedTime = `${pad(reminderDate.getHours())}:${pad(reminderDate.getMinutes())}`;
+
+    if (calendarSelectedDate) calendarSelectedDate.value = selectedDate;
+    if (calendarSelectedDateValue) calendarSelectedDateValue.textContent = selectedDate;
+    if (calendarTime) calendarTime.value = selectedTime;
+    if (calendarMessage) calendarMessage.value = reminder.message;
+    if (calendarSetReminderBtn) calendarSetReminderBtn.textContent = 'Update Reminder';
+
+    editingCalendarReminderId = reminder.id;
+
+    if (calendarStatus) {
+        calendarStatus.textContent = 'Editing reminder. Change the date or time, then submit to update the countdown.';
+        calendarStatus.className = 'status-message show info';
+    }
+}
+
+function removeCalendarReminder(reminderId) {
+    const index = calendarReminders.findIndex((item) => item.id === reminderId);
+    if (index === -1) return false;
+
+    calendarReminders.splice(index, 1);
+    saveCalendarReminders();
+    refreshCalendarCountdownView();
+
+    if (editingCalendarReminderId === reminderId) {
+        clearCalendarReminderEditState();
+    }
+
+    return true;
+}
 
 function formatDateTime(dt) {
     const d = dt instanceof Date ? dt : new Date(String(dt).replace(' ', 'T'));
@@ -369,6 +432,10 @@ function renderCalendarReminderCountdowns() {
                 <div class="calendar-popup-item-meta">
                     <span>${formatDateTime(new Date(item.targetMs))}</span>
                     <span class="calendar-popup-item-countdown">${formatDuration(remaining)}</span>
+                </div>
+                <div class="calendar-popup-item-actions">
+                    <button type="button" class="calendar-popup-action" data-action="reschedule" data-reminder-id="${escapeHtml(item.id)}">Reschedule</button>
+                    <button type="button" class="calendar-popup-action secondary" data-action="delete" data-reminder-id="${escapeHtml(item.id)}">Delete</button>
                 </div>
             </li>`;
         })
@@ -529,6 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
+    const calendarPopupList = document.getElementById('calendarPopupList');
     const calendarTimeInput = document.getElementById('calendarTime');
 
     function showTimerInputs() {
@@ -660,35 +728,83 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const dateTime = `${selectedDate} ${calendarTime}`;
+            const isEditingReminder = editingCalendarReminderId !== null;
 
             try {
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = true;
-                calendarStatus.textContent = 'Sending...';
+                calendarStatus.textContent = isEditingReminder ? 'Updating...' : 'Sending...';
                 calendarStatus.className = 'status-message show info';
 
-                await sendReminderAtDateTime(dateTime, calendarMessage);
+                if (isEditingReminder) {
+                    const reminderIndex = calendarReminders.findIndex((item) => item.id === editingCalendarReminderId);
+                    if (reminderIndex === -1) {
+                        throw new Error('Reminder no longer exists');
+                    }
 
-                calendarReminders.push({
-                    id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                    targetMs: targetDate.getTime(),
-                    message: calendarMessage
-                });
+                    calendarReminders[reminderIndex] = {
+                        id: editingCalendarReminderId,
+                        targetMs: targetDate.getTime(),
+                        message: calendarMessage
+                    };
+                } else {
+                    await sendReminderAtDateTime(dateTime, calendarMessage);
+
+                    calendarReminders.push({
+                        id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                        targetMs: targetDate.getTime(),
+                        message: calendarMessage
+                    });
+                }
 
                 calendarReminders.sort((a, b) => a.targetMs - b.targetMs);
                 saveCalendarReminders();
                 isCalendarPopupDismissed = false;
                 refreshCalendarCountdownView();
 
-                calendarStatus.textContent = 'Reminder set';
+                if (isEditingReminder) {
+                    clearCalendarReminderEditState();
+                }
+
+                calendarStatus.textContent = isEditingReminder ? 'Reminder updated' : 'Reminder set';
                 calendarStatus.className = 'status-message show success';
 
                 calendarForm.reset();
                 document.getElementById('calendarSelectedDate').value = '';
+                document.getElementById('calendarSelectedDateValue').textContent = 'None';
+                clearCalendarReminderEditState();
             } catch (err) {
                 calendarStatus.textContent = 'Error: ' + err.message;
                 calendarStatus.className = 'status-message show error';
             } finally {
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = false;
+            }
+        });
+    }
+
+    if (calendarPopupList) {
+        calendarPopupList.addEventListener('click', function(event) {
+            const button = event.target.closest('button[data-action][data-reminder-id]');
+            if (!button) return;
+
+            const action = button.getAttribute('data-action');
+            const reminderId = button.getAttribute('data-reminder-id');
+            const reminder = calendarReminders.find((item) => item.id === reminderId);
+            if (!reminder) return;
+
+            if (action === 'delete') {
+                const confirmed = window.confirm(`Delete reminder "${reminder.message}"?`);
+                if (!confirmed) return;
+
+                removeCalendarReminder(reminderId);
+                if (calendarStatus) {
+                    calendarStatus.textContent = 'Reminder deleted';
+                    calendarStatus.className = 'status-message show success';
+                }
+                return;
+            }
+
+            if (action === 'reschedule') {
+                setCalendarReminderFormValues(reminder);
             }
         });
     }

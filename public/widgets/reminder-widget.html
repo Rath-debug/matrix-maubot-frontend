@@ -410,6 +410,44 @@
             color: #666;
         }
 
+        .calendar-popup-item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .calendar-popup-action {
+            width: auto;
+            flex: 1;
+            margin-top: 0;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #ffd5de;
+            background: #fff;
+            color: #f5576c;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            box-shadow: none;
+        }
+
+        .calendar-popup-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(245, 87, 108, 0.12);
+        }
+
+        .calendar-popup-action.secondary {
+            border-color: #e7e7ef;
+            color: #666;
+        }
+
+        .calendar-popup-action.secondary:hover {
+            border-color: #f1b9c5;
+            color: #c23d59;
+            background: #fff7f9;
+        }
+
         .calendar-popup-item-countdown {
             font-family: monospace;
             color: #f5576c;
