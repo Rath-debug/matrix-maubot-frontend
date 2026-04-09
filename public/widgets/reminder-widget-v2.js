@@ -21,6 +21,7 @@ let matrixAdapterUrl = null;
 const pendingRequests = new Map();
 let requestCounter = 0;
 const MATRIX_ADAPTER_URL_STORAGE_KEY = 'matrixAdapterUrl';
+const DEFAULT_MATRIX_ADAPTER_URL = '/api/matrix/command';
 
 function getMatrixAdapterUrl() {
     if (matrixAdapterUrl) return matrixAdapterUrl;
@@ -29,7 +30,7 @@ function getMatrixAdapterUrl() {
     const configuredUrl = params.get('matrixAdapterUrl')
         || window.MATRIX_ADAPTER_URL
         || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY)
-        || '';
+        || DEFAULT_MATRIX_ADAPTER_URL;
 
     matrixAdapterUrl = configuredUrl.trim();
     return matrixAdapterUrl;
@@ -200,25 +201,12 @@ function initStandaloneMatrixContext() {
     matrixAdapterUrl = params.get('matrixAdapterUrl') || window.MATRIX_ADAPTER_URL || localStorage.getItem(MATRIX_ADAPTER_URL_STORAGE_KEY) || matrixAdapterUrl;
     openIdToken = isMatrixAdapterMode() ? null : (params.get("accessToken") || storage.accessToken || openIdToken);
 
-    if (!roomId) {
-        roomId = window.prompt("Enter Matrix Room ID (example: !abc123:matrix.org):", "") || "";
-    }
-    if (!homeserverUrl) {
-        homeserverUrl = window.prompt("Enter Matrix homeserver URL (example: https://matrix.org):", "") || "";
-    }
-    if (!isMatrixAdapterMode() && !openIdToken) {
-        openIdToken = window.prompt("Enter Matrix access token:", "") || "";
-    }
-    if (!userId) {
-        userId = window.prompt("Optional Matrix user ID (example: @alice:matrix.org):", "") || "";
-    }
-
     if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
         homeserverUrl = `https://${homeserverUrl}`;
     }
 
-    if (!roomId || !homeserverUrl || (!isMatrixAdapterMode() && !openIdToken)) {
-        throw new Error("Standalone mode requires roomId, homeserver, and either accessToken or matrixAdapterUrl");
+    if (!roomId || !homeserverUrl) {
+        throw new Error("Standalone mode requires roomId and homeserverUrl in the URL or localStorage");
     }
 
     localStorage.setItem("matrixRoomId", roomId);
