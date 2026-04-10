@@ -285,6 +285,25 @@ function initStandaloneMatrixContext() {
     console.log("✓ Standalone Matrix context loaded:", { roomId, userId, homeserverUrl });
 }
 
+function hydrateMatrixContextFromStorageAndUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const storedRoomId = localStorage.getItem("matrixRoomId") || "";
+    const storedUserId = localStorage.getItem("matrixUserId") || "";
+    const storedHomeserver = localStorage.getItem("matrixHomeserverUrl") || "";
+
+    roomId = params.get("roomId") || roomId || storedRoomId || null;
+    userId = params.get("userId") || userId || storedUserId || null;
+    homeserverUrl = params.get("homeserver")
+        || params.get("homeserverUrl")
+        || homeserverUrl
+        || storedHomeserver
+        || null;
+
+    if (homeserverUrl && !/^https?:\/\//.test(homeserverUrl)) {
+        homeserverUrl = `https://${homeserverUrl}`;
+    }
+}
+
 /**
  * Initialize widget by handshaking with Element
  */
@@ -328,6 +347,13 @@ async function initWidget() {
         });
 
         if (!capabilitiesReceived) {
+            console.warn("[Init] Did not receive capabilities from Element, trying stored context fallback");
+            hydrateMatrixContextFromStorageAndUrl();
+            if (roomId && homeserverUrl) {
+                isReady = true;
+                updateStatus("Matrix Mode", "Connected using stored context", true);
+                return;
+            }
             throw new Error("Did not receive capabilities from Element");
         }
 
@@ -370,11 +396,12 @@ async function initWidget() {
 
             console.log("✓ Extracted context from widgetId:", { roomId, userId, homeserverUrl });
         } else {
-            throw new Error(`Could not parse widgetId format: ${decodedWidgetId}`);
+            console.warn(`[Init] Could not parse widgetId format: ${decodedWidgetId}`);
+            hydrateMatrixContextFromStorageAndUrl();
         }
 
-        if (!roomId || !userId) {
-            throw new Error("Missing room or user context");
+        if (!roomId || !homeserverUrl) {
+            throw new Error("Missing room or homeserver context");
         }
 
         isReady = true;
@@ -632,7 +659,89 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarSetReminderBtn = document.getElementById('calendarSetReminderBtn');
     const calendarStatus = document.getElementById('calendarStatusMessage');
     const calendarPopupCloseBtn = document.getElementById('calendarPopupCloseBtn');
-    const calendarTimeInput = document.getElementById('calendarTime');
+    const calendarHourSelect = document.getElementById('calendarHour');
+    const calendarMinuteSelect = document.getElementById('calendarMinute');
+    const calendarPeriodSelect = document.getElementById('calendarPeriod');
+
+    const widgetModeSwitch = document.getElementById('widgetModeSwitch');
+    const widgetModeButtons = Array.from(document.querySelectorAll('.widget-mode-button[data-mode]'));
+    const widgetModePanels = Array.from(document.querySelectorAll('[data-mode-panel]'));
+
+    function setWidgetMode(mode) {
+        if (!mode || widgetModeButtons.length === 0 || widgetModePanels.length === 0) return;
+
+        if (widgetModeSwitch) {
+            widgetModeSwitch.setAttribute('data-active-mode', mode);
+        }
+
+        widgetModeButtons.forEach((btn) => {
+            const isActive = btn.getAttribute('data-mode') === mode;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            btn.setAttribute('tabindex', isActive ? '0' : '-1');
+        });
+
+        widgetModePanels.forEach((panel) => {
+            const panelMode = panel.getAttribute('data-mode-panel');
+            const shouldShow = panelMode === mode;
+            panel.classList.toggle('is-hidden-by-mode', !shouldShow);
+        });
+    }
+
+    if (widgetModeButtons.length > 0 && widgetModePanels.length > 0) {
+        widgetModeButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const mode = btn.getAttribute('data-mode');
+                setWidgetMode(mode);
+            });
+        });
+
+        const initialMode = (widgetModeSwitch && widgetModeSwitch.getAttribute('data-active-mode')) || 'timer';
+        setWidgetMode(initialMode);
+    }
+
+    function initializeCalendarTimeSelectors() {
+        if (calendarHourSelect && calendarHourSelect.options.length === 0) {
+            for (let h = 1; h <= 12; h++) {
+                const option = document.createElement('option');
+                option.value = String(h);
+                option.textContent = String(h).padStart(2, '0');
+                calendarHourSelect.appendChild(option);
+            }
+        }
+
+        if (calendarMinuteSelect && calendarMinuteSelect.options.length === 0) {
+            for (let m = 0; m < 60; m++) {
+                const option = document.createElement('option');
+                option.value = String(m);
+                option.textContent = String(m).padStart(2, '0');
+                calendarMinuteSelect.appendChild(option);
+            }
+        }
+
+        if (calendarPeriodSelect && calendarPeriodSelect.options.length === 0) {
+            ['AM', 'PM'].forEach((p) => {
+                const option = document.createElement('option');
+                option.value = p;
+                option.textContent = p;
+                calendarPeriodSelect.appendChild(option);
+            });
+        }
+
+        const now = new Date();
+        if (calendarHourSelect && !calendarHourSelect.value) {
+            const hour12 = ((now.getHours() + 11) % 12) + 1;
+            calendarHourSelect.value = String(hour12);
+        }
+        if (calendarMinuteSelect && !calendarMinuteSelect.value) {
+            calendarMinuteSelect.value = String(now.getMinutes());
+        }
+        if (calendarPeriodSelect && !calendarPeriodSelect.value) {
+            calendarPeriodSelect.value = now.getHours() >= 12 ? 'PM' : 'AM';
+        }
+    }
+
+    initializeCalendarTimeSelectors();
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
@@ -740,8 +849,26 @@ document.addEventListener("DOMContentLoaded", () => {
         calendarForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const selectedDate = document.getElementById('calendarSelectedDate').value;
-            const calendarTime = document.getElementById('calendarTime').value;
+            const selectedHour = calendarHourSelect ? parseInt(calendarHourSelect.value, 10) : NaN;
+            const selectedMinute = calendarMinuteSelect ? parseInt(calendarMinuteSelect.value, 10) : NaN;
+            const selectedPeriod = calendarPeriodSelect ? calendarPeriodSelect.value : '';
             const calendarMessage = document.getElementById('calendarMessage').value.trim();
+
+            const hasValidHour = Number.isInteger(selectedHour) && selectedHour >= 1 && selectedHour <= 12;
+            const hasValidMinute = Number.isInteger(selectedMinute) && selectedMinute >= 0 && selectedMinute <= 59;
+            const hasValidPeriod = selectedPeriod === 'AM' || selectedPeriod === 'PM';
+
+            if (!hasValidHour || !hasValidMinute || !hasValidPeriod) {
+                calendarStatus.textContent = 'Set a valid time';
+                calendarStatus.className = 'status-message show error';
+                return;
+            }
+
+            let hour24 = selectedHour % 12;
+            if (selectedPeriod === 'PM') {
+                hour24 += 12;
+            }
+            const calendarTime = `${String(hour24).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`;
 
             if (!selectedDate) {
                 calendarStatus.textContent = 'Select date';
@@ -769,7 +896,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 calendarStatus.textContent = 'Sending...';
                 calendarStatus.className = 'status-message show info';
 
-                await sendReminderAtDateTime(dateTime, calendarMessage);
+                let matrixSendError = null;
+                if (isReady) {
+                    try {
+                        await sendReminderAtDateTime(dateTime, calendarMessage);
+                    } catch (sendErr) {
+                        matrixSendError = sendErr;
+                        console.warn('[Calendar] Matrix reminder send failed, keeping local reminder:', sendErr);
+                    }
+                }
 
                 calendarReminders.push({
                     id: `cal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -782,8 +917,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 isCalendarPopupDismissed = false;
                 refreshCalendarCountdownView();
 
-                calendarStatus.textContent = 'Reminder set';
-                calendarStatus.className = 'status-message show success';
+                if (matrixSendError) {
+                    calendarStatus.textContent = 'Reminder saved locally. Matrix send failed.';
+                    calendarStatus.className = 'status-message show info';
+                } else if (!isReady) {
+                    calendarStatus.textContent = 'Reminder saved locally (Matrix not connected).';
+                    calendarStatus.className = 'status-message show info';
+                } else {
+                    calendarStatus.textContent = 'Reminder set';
+                    calendarStatus.className = 'status-message show success';
+                }
 
                 calendarForm.reset();
                 document.getElementById('calendarSelectedDate').value = '';
