@@ -731,16 +731,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        const now = new Date();
         if (calendarHourSelect && !calendarHourSelect.value) {
-            const hour12 = ((now.getHours() + 11) % 12) + 1;
-            calendarHourSelect.value = String(hour12);
+            calendarHourSelect.value = String(getOneHourAheadValue().hour12);
         }
         if (calendarMinuteSelect && !calendarMinuteSelect.value) {
-            calendarMinuteSelect.value = String(now.getMinutes());
+            calendarMinuteSelect.value = String(getOneHourAheadValue().minute);
         }
         if (calendarPeriodSelect && !calendarPeriodSelect.value) {
-            calendarPeriodSelect.value = now.getHours() >= 12 ? 'PM' : 'AM';
+            calendarPeriodSelect.value = getOneHourAheadValue().period;
         }
     }
 
@@ -1077,6 +1075,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Date(dateLike.getFullYear(), dateLike.getMonth(), dateLike.getDate());
     }
 
+    function getLocalDateKey(dateLike = new Date()) {
+        return `${dateLike.getFullYear()}-${String(dateLike.getMonth() + 1).padStart(2, '0')}-${String(dateLike.getDate()).padStart(2, '0')}`;
+    }
+
+    function formatReadableLocalDate(dateLike = new Date()) {
+        return dateLike.toLocaleDateString([], {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
     function isPastDate(dateStr) {
         const d = new Date(`${dateStr}T00:00:00`);
         return d.getTime() < getLocalDayStart().getTime();
@@ -1098,19 +1109,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return { hour12, minute, period };
     }
 
+    function getOneHourAheadValue() {
+        const target = new Date(Date.now() + 60 * 60 * 1000);
+        target.setSeconds(0, 0);
+        return to12HourValue(target.getHours(), target.getMinutes());
+    }
+
     function syncTodayTimeDefaults() {
         if (!selectedDate || !calendarHourSelect || !calendarMinuteSelect || !calendarPeriodSelect) {
             return;
         }
 
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = getLocalDateKey(new Date());
         if (selectedDate !== todayStr) {
             return;
         }
 
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + 1, 0, 0);
-        const { hour12, minute, period } = to12HourValue(now.getHours(), now.getMinutes());
+        const { hour12, minute, period } = getOneHourAheadValue();
 
         calendarHourSelect.value = String(hour12);
         calendarMinuteSelect.value = String(minute);
@@ -1118,12 +1133,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function syncSelectedDateLabel() {
+        const todayReadable = formatReadableLocalDate(new Date());
         if (calendarSelectedDateValue) {
             calendarSelectedDateValue.textContent = selectedDate || 'No date selected yet';
         }
         if (calendarSelectedDateMeta) {
             if (!selectedDate) {
-                calendarSelectedDateMeta.textContent = `Choose a future day and time in ${getTimezoneLabel()}.`;
+                calendarSelectedDateMeta.textContent = `Today is ${todayReadable}. Choose a future day and time in ${getTimezoneLabel()}.`;
             } else {
                 calendarSelectedDateMeta.textContent = `Selected ${selectedDate} in ${getTimezoneLabel()}.`;
             }
@@ -1163,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
                     let classes = 'calendar-day-btn';
                     const isPast = isPastDate(dateStr);
-                    const isToday = dateStr === new Date().toISOString().slice(0, 10);
+                    const isToday = dateStr === getLocalDateKey(new Date());
                     if (isPast) classes += ' is-past';
                     if (isToday) classes += ' is-today';
                     if (selectedDate === dateStr) classes += ' is-selected';
