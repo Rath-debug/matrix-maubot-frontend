@@ -662,6 +662,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendarHourSelect = document.getElementById('calendarHour');
     const calendarMinuteSelect = document.getElementById('calendarMinute');
     const calendarPeriodSelect = document.getElementById('calendarPeriod');
+    const calendarMessageInput = document.getElementById('calendarMessage');
+    const calendarHint = document.querySelector('.calendar-hint');
+    let isCalendarSubmitting = false;
 
     const widgetModeSwitch = document.getElementById('widgetModeSwitch');
     const widgetModeButtons = Array.from(document.querySelectorAll('.widget-mode-button[data-mode]'));
@@ -742,6 +745,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     initializeCalendarTimeSelectors();
+
+    function getTimezoneLabel() {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Time';
+        const offsetMinutes = -new Date().getTimezoneOffset();
+        const sign = offsetMinutes >= 0 ? '+' : '-';
+        const absMinutes = Math.abs(offsetMinutes);
+        const oh = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+        const om = String(absMinutes % 60).padStart(2, '0');
+        return `${zone} (UTC${sign}${oh}:${om})`;
+    }
+
+    if (calendarHint) {
+        calendarHint.textContent = `Uses your local time zone: ${getTimezoneLabel()}. Submit to open the calendar countdown popup.`;
+    }
+
+    if (calendarMessageInput) {
+        const maxLen = Number(calendarMessageInput.getAttribute('maxlength')) || 240;
+        const counter = document.createElement('div');
+        counter.id = 'calendarMessageCounter';
+        counter.className = 'calendar-hint';
+        counter.style.marginTop = '6px';
+        counter.style.marginBottom = '0';
+
+        const updateCounter = () => {
+            const current = calendarMessageInput.value.length;
+            const remaining = Math.max(0, maxLen - current);
+            counter.textContent = `${remaining} characters left`;
+        };
+
+        calendarMessageInput.addEventListener('input', () => {
+            if (calendarMessageInput.value.length > maxLen) {
+                calendarMessageInput.value = calendarMessageInput.value.slice(0, maxLen);
+            }
+            updateCounter();
+        });
+
+        updateCounter();
+        calendarMessageInput.insertAdjacentElement('afterend', counter);
+    }
 
     function showTimerInputs() {
         if (timerInputGroup) timerInputGroup.style.display = '';
@@ -848,11 +890,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (calendarForm) {
         calendarForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (isCalendarSubmitting) {
+                return;
+            }
+
             const selectedDate = document.getElementById('calendarSelectedDate').value;
             const selectedHour = calendarHourSelect ? parseInt(calendarHourSelect.value, 10) : NaN;
             const selectedMinute = calendarMinuteSelect ? parseInt(calendarMinuteSelect.value, 10) : NaN;
             const selectedPeriod = calendarPeriodSelect ? calendarPeriodSelect.value : '';
-            const calendarMessage = document.getElementById('calendarMessage').value.trim();
+            const rawMessage = document.getElementById('calendarMessage').value || '';
+            const calendarMessage = rawMessage.replace(/\s+/g, ' ').trim().slice(0, 240);
+            if (calendarMessageInput) {
+                calendarMessageInput.value = calendarMessage;
+            }
 
             const hasValidHour = Number.isInteger(selectedHour) && selectedHour >= 1 && selectedHour <= 12;
             const hasValidMinute = Number.isInteger(selectedMinute) && selectedMinute >= 0 && selectedMinute <= 59;
@@ -884,7 +934,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const targetDate = new Date(`${selectedDate}T${calendarTime}`);
             if (Number.isNaN(targetDate.getTime()) || targetDate.getTime() <= Date.now()) {
-                calendarStatus.textContent = 'Pick a future time';
+                const todayStr = new Date().toISOString().slice(0, 10);
+                calendarStatus.textContent = selectedDate === todayStr
+                    ? 'For today, choose a time in the future.'
+                    : 'Pick a future time';
                 calendarStatus.className = 'status-message show error';
                 return;
             }
@@ -892,6 +945,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const dateTime = `${selectedDate} ${calendarTime}`;
 
             try {
+                isCalendarSubmitting = true;
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = true;
                 calendarStatus.textContent = 'Sending...';
                 calendarStatus.className = 'status-message show info';
@@ -934,6 +988,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 calendarStatus.textContent = 'Error: ' + err.message;
                 calendarStatus.className = 'status-message show error';
             } finally {
+                isCalendarSubmitting = false;
                 if (calendarSetReminderBtn) calendarSetReminderBtn.disabled = false;
             }
         });
@@ -1013,10 +1068,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextMonthBtn = document.getElementById('nextMonth');
     const calendarSelectedDate = document.getElementById('calendarSelectedDate');
     const calendarSelectedDateValue = document.getElementById('calendarSelectedDateValue');
+    const calendarSelectedDateMeta = document.getElementById('calendarSelectedDateMeta');
+    const calendarHourSelect = document.getElementById('calendarHour');
+    const calendarMinuteSelect = document.getElementById('calendarMinute');
+    const calendarPeriodSelect = document.getElementById('calendarPeriod');
+
+    function getLocalDayStart(dateLike = new Date()) {
+        return new Date(dateLike.getFullYear(), dateLike.getMonth(), dateLike.getDate());
+    }
+
+    function isPastDate(dateStr) {
+        const d = new Date(`${dateStr}T00:00:00`);
+        return d.getTime() < getLocalDayStart().getTime();
+    }
+
+    function getTimezoneLabel() {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Time';
+        const offsetMinutes = -new Date().getTimezoneOffset();
+        const sign = offsetMinutes >= 0 ? '+' : '-';
+        const absMinutes = Math.abs(offsetMinutes);
+        const oh = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+        const om = String(absMinutes % 60).padStart(2, '0');
+        return `${zone} (UTC${sign}${oh}:${om})`;
+    }
+
+    function to12HourValue(hour24, minute) {
+        const period = hour24 >= 12 ? 'PM' : 'AM';
+        const hour12 = ((hour24 + 11) % 12) + 1;
+        return { hour12, minute, period };
+    }
+
+    function syncTodayTimeDefaults() {
+        if (!selectedDate || !calendarHourSelect || !calendarMinuteSelect || !calendarPeriodSelect) {
+            return;
+        }
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (selectedDate !== todayStr) {
+            return;
+        }
+
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1, 0, 0);
+        const { hour12, minute, period } = to12HourValue(now.getHours(), now.getMinutes());
+
+        calendarHourSelect.value = String(hour12);
+        calendarMinuteSelect.value = String(minute);
+        calendarPeriodSelect.value = period;
+    }
 
     function syncSelectedDateLabel() {
         if (calendarSelectedDateValue) {
-            calendarSelectedDateValue.textContent = selectedDate || 'None';
+            calendarSelectedDateValue.textContent = selectedDate || 'No date selected yet';
+        }
+        if (calendarSelectedDateMeta) {
+            if (!selectedDate) {
+                calendarSelectedDateMeta.textContent = `Choose a future day and time in ${getTimezoneLabel()}.`;
+            } else {
+                calendarSelectedDateMeta.textContent = `Selected ${selectedDate} in ${getTimezoneLabel()}.`;
+            }
         }
     }
 
@@ -1052,9 +1162,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
                     let classes = 'calendar-day-btn';
+                    const isPast = isPastDate(dateStr);
+                    const isToday = dateStr === new Date().toISOString().slice(0, 10);
+                    if (isPast) classes += ' is-past';
+                    if (isToday) classes += ' is-today';
                     if (selectedDate === dateStr) classes += ' is-selected';
                     html += `<td class="calendar-day-cell">
-                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${dateStr}">
+                        <button type="button" class="${classes}" data-date="${dateStr}" aria-label="${dateStr}" ${isPast ? 'disabled aria-disabled="true"' : ''}>
                             ${date}
                         </button>
                     </td>`;
@@ -1069,8 +1183,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add click listeners to date buttons
         document.querySelectorAll('.calendar-day-btn').forEach(btn => {
             btn.addEventListener('click', function() {
+                if (btn.disabled || btn.classList.contains('is-past')) {
+                    return;
+                }
                 selectedDate = btn.getAttribute('data-date');
                 calendarSelectedDate.value = selectedDate;
+                syncTodayTimeDefaults();
                 syncSelectedDateLabel();
                 renderCalendar(currentMonth, currentYear);
             });
